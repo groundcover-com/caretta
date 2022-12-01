@@ -133,12 +133,31 @@ int handle_tcp_data_queue(struct pt_regs* ctx) {
         return -1;
     }
 
+    // fill the conn_id extra details from sock_info map entry, or create one
     struct sock_info* sock_info = bpf_map_lookup_elem(&sock_infos, &sock);
     if (sock_info == 0) {
         // first time we encounter this sock
-        // TODO check if server or client and insert to the maps
-        // meanwhile, ignore it
-        return 0;
+        // check if server or client and insert to the maps
+
+        // the max_ack_backlog holds the limit for the accept queue
+        // if it is a server, it will not be 0
+        
+        int max_ack_backlog = 0;
+        bpf_core_read(&max_ack_backlog, sizeof(max_ack_backlog), &sock->sk_max_ack_backlog);
+
+        struct sock_info info = {
+            .pid = 0, //can't associate to pid anyway
+            .role = max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT : CONNECTION_ROLE_SERVER,
+            .is_active = true,
+            .id = global_id_counter++,
+        };
+        bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
+
+        conn_id.pid = info.pid;
+        conn_id.id = info.id;
+        conn_id.role = info.role;
+        throughput.is_active = true;
+
     } else {
         conn_id.pid = sock_info->pid;
         conn_id.id = sock_info->id;
