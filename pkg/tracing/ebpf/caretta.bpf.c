@@ -23,6 +23,8 @@ enum connection_role {
     CONNECTION_ROLE_SERVER,
 };
 
+static u32 global_id_counter = 0; 
+
 // partial struct of args for tcp_set_state
 struct set_state_args  {
     u64 padding;
@@ -152,6 +154,56 @@ int handle_tcp_data_queue(struct pt_regs* ctx) {
 
 SEC("tracepoint/sock/inet_sock_set_state")
 int handle_sock_set_state(struct set_state_args* args) {
-    // TODO
+    
+    struct sock* sock = (struct sock*)args->skaddr;
+
+    // handle according the new state
+    if (args->newstate == TCP_SYN_RECV) {
+        // this is a server got syn after listen
+        struct connection_identifier conn_id;
+        memset(&conn_id, 0, sizeof(conn_id));
+        struct connection_throughput_stats throughput;
+        memset(&throughput, 0, sizeof(throughput));
+
+        if (parse_sock_data(args->skaddr, &conn_id.tuple, &throughput) == -1) {
+            return -1;
+        }
+
+        struct sock_info info = {
+            .pid = 0, // can't associate to process
+            .role = CONNECTION_ROLE_SERVER,
+            .is_active = true,
+            .id = global_id_counter++,
+        };
+
+        bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
+
+        conn_id.pid = info.pid;
+        conn_id.id = info.id;
+        conn_id.role = info.role;
+
+        bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
+             
+    } else if (args->newstate == TCP_SYN_SENT) {
+        // start of a client session
+        u32 pid = bpf_get_current_pid_tgid() >> 32;
+        
+        struct sock_info info = {
+            .pid = pid,
+            .role = CONNECTION_ROLE_CLIENT,
+            .is_active = true,
+            .id = global_id_counter++,
+        };
+
+        bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
+    } else if(args->newstate == TCP_CLOSE || args->newstate == TCP_CLOSE_WAIT) {
+        // mark as inactive
+        struct sock_info* info = bpf_map_lookup_elem(&sock_infos, &sock);
+        if (info != 0) {
+            info->is_active = false;
+        }
+    }
+    // TODO consider adding handler for TCP_FIN_WAIT
+
     return 0;
 }
