@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ClusterSnapshot struct {
+type clusterSnapshot struct {
 	Pods         []v1.Pod
 	Nodes        []v1.Node
 	ReplicaSets  map[types.UID]appsv1.ReplicaSet
@@ -24,25 +24,25 @@ type ClusterSnapshot struct {
 	Services     map[types.UID]v1.Service
 }
 
-type IPMapping map[string]string
+type ipMapping map[string]string
 
 type IPResolver struct {
 	clientset *kubernetes.Clientset
-	snapshot  ClusterSnapshot
-	ipsMap    IPMapping
+	snapshot  clusterSnapshot
+	ipsMap    ipMapping
 }
 
 func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
 	return &IPResolver{
 		clientset: clientset,
-		snapshot: ClusterSnapshot{
+		snapshot: clusterSnapshot{
 			ReplicaSets:  make(map[types.UID]appsv1.ReplicaSet),
 			DaemonSets:   make(map[types.UID]appsv1.DaemonSet),
 			StatefulSets: make(map[types.UID]appsv1.StatefulSet),
 			Jobs:         make(map[types.UID]batchv1.Job),
 			Services:     make(map[types.UID]v1.Service),
 		},
-		ipsMap: make(IPMapping),
+		ipsMap: make(ipMapping),
 	}
 }
 
@@ -153,7 +153,7 @@ func (ipResolver IPResolver) updateIpMapping() {
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
 // the snapshot is maintained to avoid using an API request for each resolving
-func getControllerOfOwner(snapshot *ClusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
+func getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
 	switch originalOwner.Kind {
 	case "ReplicaSet":
 		replicaSet, ok := snapshot.ReplicaSets[originalOwner.UID]
@@ -183,7 +183,7 @@ func getControllerOfOwner(snapshot *ClusterSnapshot, originalOwner *metav1.Owner
 	return nil, errors.New("Unsupported kind for lookup - " + originalOwner.Kind)
 }
 
-func resolvePodName(snapshot *ClusterSnapshot, pod *v1.Pod) string {
+func resolvePodName(snapshot *clusterSnapshot, pod *v1.Pod) string {
 	name := pod.Name + ":" + pod.Namespace
 	owner := metav1.GetControllerOf(pod)
 	for owner != nil {
