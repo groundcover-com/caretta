@@ -46,11 +46,14 @@ func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
 	}
 }
 
+// update the resolver's cache to the current cluster's state
 func (resolver IPResolver) UpdateIPResolver() {
 	resolver.updateClusterSnapshot()
 	resolver.updateIpMapping()
 }
 
+// resolve the given IP from the resolver's cache
+// if not available, return the IP itself.
 func (resolver IPResolver) ResolveIP(ip string) string {
 	if val, ok := resolver.ipsMap[ip]; ok {
 		return val
@@ -58,68 +61,68 @@ func (resolver IPResolver) ResolveIP(ip string) string {
 	return ip
 }
 
-func (ipResolver IPResolver) updateClusterSnapshot() {
-	pods, err := ipResolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+func (resolver IPResolver) updateClusterSnapshot() {
+	pods, err := resolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	ipResolver.snapshot.Pods = pods.Items
+	resolver.snapshot.Pods = pods.Items
 
-	nodes, err := ipResolver.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	nodes, err := resolver.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	ipResolver.snapshot.Nodes = nodes.Items
+	resolver.snapshot.Nodes = nodes.Items
 
-	replicasets, err := ipResolver.clientset.AppsV1().ReplicaSets("").List(context.Background(), metav1.ListOptions{})
+	replicasets, err := resolver.clientset.AppsV1().ReplicaSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, rs := range replicasets.Items {
-		ipResolver.snapshot.ReplicaSets[rs.ObjectMeta.UID] = rs
+		resolver.snapshot.ReplicaSets[rs.ObjectMeta.UID] = rs
 	}
 
-	daemonsets, err := ipResolver.clientset.AppsV1().DaemonSets("").List(context.Background(), metav1.ListOptions{})
+	daemonsets, err := resolver.clientset.AppsV1().DaemonSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, ds := range daemonsets.Items {
-		ipResolver.snapshot.DaemonSets[ds.ObjectMeta.UID] = ds
+		resolver.snapshot.DaemonSets[ds.ObjectMeta.UID] = ds
 	}
 
-	statefulsets, err := ipResolver.clientset.AppsV1().StatefulSets("").List(context.Background(), metav1.ListOptions{})
+	statefulsets, err := resolver.clientset.AppsV1().StatefulSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, ss := range statefulsets.Items {
-		ipResolver.snapshot.StatefulSets[ss.ObjectMeta.UID] = ss
+		resolver.snapshot.StatefulSets[ss.ObjectMeta.UID] = ss
 	}
 
-	jobs, err := ipResolver.clientset.BatchV1().Jobs("").List(context.Background(), metav1.ListOptions{})
+	jobs, err := resolver.clientset.BatchV1().Jobs("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, job := range jobs.Items {
-		ipResolver.snapshot.Jobs[job.ObjectMeta.UID] = job
+		resolver.snapshot.Jobs[job.ObjectMeta.UID] = job
 	}
 
-	services, err := ipResolver.clientset.CoreV1().Services("").List(context.Background(), metav1.ListOptions{})
+	services, err := resolver.clientset.CoreV1().Services("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, service := range services.Items {
-		ipResolver.snapshot.Services[service.UID] = service
+		resolver.snapshot.Services[service.UID] = service
 	}
 }
 
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
-func (ipResolver IPResolver) updateIpMapping() {
+func (resolver IPResolver) updateIpMapping() {
 	// because IP collisions may occur and lead to overwritings in the map, the order is important
 	// we go from less "favorable" to more "favorable" -
 	// services -> running pods -> nodes
 
-	for _, service := range ipResolver.snapshot.Services {
+	for _, service := range resolver.snapshot.Services {
 		// services has (potentially multiple) ClusterIP
 		name := service.Name + ":" + service.Namespace
 
@@ -127,26 +130,26 @@ func (ipResolver IPResolver) updateIpMapping() {
 
 		for _, clusterIp := range service.Spec.ClusterIPs {
 			if clusterIp != "None" {
-				ipResolver.ipsMap[clusterIp] = name
+				resolver.ipsMap[clusterIp] = name
 			}
 		}
 	}
 
-	for _, pod := range ipResolver.snapshot.Pods {
-		name := resolvePodName(&ipResolver.snapshot, &pod)
+	for _, pod := range resolver.snapshot.Pods {
+		name := resolvePodName(&resolver.snapshot, &pod)
 		podPhase := pod.Status.Phase
 		for _, podIp := range pod.Status.PodIPs {
 			// if ip already in the map, override only if current pod is running
-			_, ok := ipResolver.ipsMap[podIp.IP]
+			_, ok := resolver.ipsMap[podIp.IP]
 			if !ok || podPhase == v1.PodRunning {
-				ipResolver.ipsMap[podIp.IP] = name
+				resolver.ipsMap[podIp.IP] = name
 			}
 		}
 	}
 
-	for _, node := range ipResolver.snapshot.Nodes {
+	for _, node := range resolver.snapshot.Nodes {
 		for _, nodeAddress := range node.Status.Addresses {
-			ipResolver.ipsMap[nodeAddress.Address] = string(nodeAddress.Type) + "/" + node.Name + ":INTERNAL"
+			resolver.ipsMap[nodeAddress.Address] = string(nodeAddress.Type) + "/" + node.Name + ":INTERNAL"
 		}
 	}
 }
