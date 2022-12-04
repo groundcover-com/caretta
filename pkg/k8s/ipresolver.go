@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -13,6 +14,19 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// gets a hostname (probably in the pattern name:namespace) and split it to name and namespace
+// basically a wrapped Split function to handle some edge cases
+func SplitNamespace(fullname string) (string, string) {
+	if !strings.Contains(fullname, ":") {
+		return fullname, ""
+	}
+	s := strings.Split(fullname, ":")
+	if len(s) > 1 {
+		return s[0], s[1]
+	}
+	return fullname, ""
+}
 
 type clusterSnapshot struct {
 	Pods         []v1.Pod

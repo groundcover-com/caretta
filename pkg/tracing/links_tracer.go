@@ -4,6 +4,15 @@ import (
 	"log"
 
 	"github.com/groundcover-com/caretta/pkg/k8s"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	pollsMade = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "caretta_polls_made",
+		Help: "Counter of polls made by caretta",
+	})
 )
 
 // reduce a specific connection to a general link
@@ -15,6 +24,7 @@ func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPReso
 	// in the meantime, host is the ip
 	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
 	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
+	log.Printf("Resolving %d, %d", connection.Tuple.SrcIp, connection.Tuple.DstIp)
 
 	if connection.Role == CONNECTION_ROLE_CLIENT {
 		// Src is Client, Dst is Server, Port is DstPort
@@ -32,11 +42,15 @@ func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPReso
 	return link
 }
 
+type BpfObjects *bpfObjects
+
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, resolver k8s.IPResolver) map[NetworkLink]uint64 {
+func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, resolver k8s.IPResolver) (map[NetworkLink]uint64, map[NetworkLink]uint64) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
+	pollsMade.Inc()
+
 	var connectionsToDelete []ConnectionIdentifier
 	currentLinks := make(map[NetworkLink]uint64)
 	entries := objs.bpfMaps.Connections.Iterate()
@@ -87,6 +101,6 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 		pastLinks[reduceConnectionToLink(conn, resolver)] += throughput.BytesSent
 	}
 
-	return currentLinks
+	return pastLinks, currentLinks
 
 }
