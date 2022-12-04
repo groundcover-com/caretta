@@ -1,16 +1,20 @@
 package tracing
 
-import "log"
+import (
+	"log"
+
+	"github.com/groundcover-com/caretta/pkg/k8s"
+)
 
 // reduce a specific connection to a general link
-func reduceConnectionToLink(connection ConnectionIdentifier) NetworkLink {
+func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPResolver) NetworkLink {
 	var link NetworkLink
 	link.Role = connection.Role
 
 	// TODO add k8s resolving here after k8s package is implemented
 	// in the meantime, host is the ip
-	srcHost := IP(connection.Tuple.SrcIp).String()
-	dstHost := IP(connection.Tuple.DstIp).String()
+	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
+	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
 
 	if connection.Role == CONNECTION_ROLE_CLIENT {
 		// Src is Client, Dst is Server, Port is DstPort
@@ -30,9 +34,9 @@ func reduceConnectionToLink(connection ConnectionIdentifier) NetworkLink {
 
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64) map[NetworkLink]uint64 {
+func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, resolver k8s.IPResolver) map[NetworkLink]uint64 {
 	// outline of an iteration -
-	// filter unwanted connections, sum all connections as links, add past links, and publish to metrics
+	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	var connectionsToDelete []ConnectionIdentifier
 	currentLinks := make(map[NetworkLink]uint64)
 	entries := objs.bpfMaps.Connections.Iterate()
@@ -52,7 +56,7 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64) 
 			continue
 		}
 
-		link := reduceConnectionToLink(conn)
+		link := reduceConnectionToLink(conn, resolver)
 		currentLinks[link] += throughput.BytesSent
 
 		if throughput.IsActive == 0 {
@@ -63,11 +67,6 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64) 
 	// add past links
 	for pastLink, pastThroughput := range pastLinks {
 		currentLinks[pastLink] += pastThroughput
-	}
-
-	// publish to metrics
-	for range currentLinks {
-		// TODO publish to metrics
 	}
 
 	// delete connections marked to delete
@@ -85,7 +84,7 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64) 
 			continue
 		}
 		// if deletion is successful, add it to past links
-		pastLinks[reduceConnectionToLink(conn)] += throughput.BytesSent
+		pastLinks[reduceConnectionToLink(conn, resolver)] += throughput.BytesSent
 	}
 
 	return currentLinks
