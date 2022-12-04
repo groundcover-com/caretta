@@ -6,11 +6,12 @@ import (
 	"log"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang bpf ./ebpf/caretta.bpf.c --  -I./ebpf/headers  -I/usr/src/linux-headers-5.4.0-1045-aws/include/ -I/usr/src/linux-headers-5.4.0-1045-aws/include/uapi  -I.
 
-func loadProbes() {
+func LoadProbes() *bpfObjects {
 	objs := bpfObjects{}
 	err := loadBpfObjects(&objs, &ebpf.CollectionOptions{})
 	if err != nil {
@@ -23,5 +24,17 @@ func loadProbes() {
 	log.Printf("BPF objects loaded")
 
 	// attach a kprobe and tracepoint
+	_, err = link.Kprobe("tcp_data_queue", objs.bpfPrograms.HandleTcpDataQueue, nil)
+	if err != nil {
+		log.Fatalf("Error attaching kprobe: %v", err)
+	}
+	log.Printf("Kprobe attached successfully")
 
+	_, err = link.Tracepoint("sock", "inet_sock_set_state", objs.bpfPrograms.HandleSockSetState, nil)
+	if err != nil {
+		log.Fatalf("Error attaching tracepoint: %v", err)
+	}
+	log.Printf("Tracepoint attached successfully")
+
+	return &objs
 }
