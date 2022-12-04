@@ -24,7 +24,6 @@ func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPReso
 	// in the meantime, host is the ip
 	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
 	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
-	log.Printf("Resolving %d, %d", connection.Tuple.SrcIp, connection.Tuple.DstIp)
 
 	if connection.Role == CONNECTION_ROLE_CLIENT {
 		// Src is Client, Dst is Server, Port is DstPort
