@@ -17,6 +17,13 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 #define debug_print(...) \
             do { if (DEBUG_TEST) bpf_printk(__VA_ARGS__); } while (0)
 
+// helper defs for inet_sock. These are defined in inet_sock.h, but not copied automatically to vmlinux.h
+#define inet_daddr		sk.__sk_common.skc_daddr
+#define inet_rcv_saddr		sk.__sk_common.skc_rcv_saddr
+#define inet_dport		sk.__sk_common.skc_dport
+#define inet_num		sk.__sk_common.skc_num
+
+
 enum connection_role {
     CONNECTION_ROLE_UNKNOWN = 0,
     CONNECTION_ROLE_CLIENT,
@@ -88,6 +95,10 @@ struct bpf_map_def SEC("maps") connections = {
     .max_entries = MAX_CONNECTIONS,
 };
 
+// helper to conver short int from BE to LE
+static inline u16 be_to_le(__be16 be) {
+    return (be>>8) | (be<<8);
+}
 
 // function for parsing the struct sock
 static inline int parse_sock_data(struct sock* sock, struct connection_tuple* out_tuple, struct connection_throughput_stats* out_throughput) {
@@ -111,7 +122,49 @@ static inline int parse_sock_data(struct sock* sock, struct connection_tuple* ou
     u16 src_port = 0;
     u16 dst_port = 0;
 
-    // TODO finish parsing
+    // read connection tuple
+
+    err = bpf_core_read(&out_tuple->src_ip, sizeof(out_tuple->src_ip), &inet->inet_saddr);
+    if (err) {
+        debug_print("Error reading source ip");
+        return -1;
+    }
+
+    err = bpf_core_read(&out_tuple->dst_ip, sizeof(out_tuple->dst_ip), &inet->inet_daddr);
+    if (err) {
+        debug_print("Error reading dest ip");
+        return -1;
+    }
+
+    err = bpf_core_read(&src_port_be, sizeof(src_port_be), &inet->inet_sport);
+    if (err) {
+        debug_print("Error reading src port");
+        return -1;
+    }
+    out_tuple->src_port = be_to_le(src_port);
+
+    err = bpf_core_read(&dst_port_be, sizeof(dst_port_be), &inet->inet_dport);
+    if (err) {
+        debug_print("Error reading dst port");
+        return -1;
+    }
+    out_tuple->dst_port = be_to_le(dst_port_be);
+
+    
+    // read throughput data
+    u64 bytes_sent = 0;
+    u64 bytes_received = 0;
+
+    err = bpf_core_read(&out_throughput->bytes_received, sizeof(out_throughput->bytes_received), &tcp->bytes_received);
+    if (err) {
+        debug_print("Error reading bytes_received");
+        return -1;
+    }
+    err = bpf_core_read(&out_throughput->bytes_sent, sizeof(out_throughput->bytes_sent), &tcp->bytes_sent);
+    if (err) {
+        debug_print("Error reading bytes_sent");
+        return -1;
+    }
 
     return 0;
 };
