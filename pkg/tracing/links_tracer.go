@@ -13,6 +13,19 @@ var (
 		Name: "caretta_polls_made",
 		Help: "Counter of polls made by caretta",
 	})
+	failedConnectionDeletion = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "caretta_failed_deletions",
+		Help: "Counter of failed deletion of closed connection from map",
+	})
+	unRoledConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "caretta_current_unroled_connections",
+		Help: `Number of connection which coldn't be distinguished to
+		 role (client/server) in the last iteration`,
+	})
+	filteredLoopbackConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "caretta_current_loopback_connections",
+		Help: `Number of loopback connections observed in the last iteration`,
+	})
 )
 
 // reduce a specific connection to a general link
@@ -36,6 +49,7 @@ func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPReso
 		link.ServerHost = srcHost
 		link.ServerPort = connection.Tuple.SrcPort
 	} else {
+		// shouldn't get here
 		log.Fatal("Un-roled connection")
 	}
 	return link
@@ -49,6 +63,8 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
+	unroledCounter := 0
+	loopbackCounter := 0
 
 	var connectionsToDelete []ConnectionIdentifier
 	currentLinks := make(map[NetworkLink]uint64)
@@ -65,7 +81,15 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 		// TODO
 		// TODO add metrics on skips
 
+		// skip loopback connections
+		if conn.Tuple.SrcIp == conn.Tuple.DstIp {
+			loopbackCounter++
+			continue
+		}
+
+		// filter unroled connections (probably indicates a bug)
 		if conn.Role == CONNECTION_ROLE_UNKNOWN {
+			unroledCounter++
 			continue
 		}
 
@@ -76,6 +100,9 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 			connectionsToDelete = append(connectionsToDelete, conn)
 		}
 	}
+
+	unRoledConnections.Set(float64(unroledCounter))
+	filteredLoopbackConnections.Set(float64(loopbackCounter))
 
 	// add past links
 	for pastLink, pastThroughput := range pastLinks {
@@ -89,11 +116,13 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 		err := objs.bpfMaps.Connections.Lookup(conn, &throughput)
 		if err != nil {
 			log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
+			failedConnectionDeletion.Inc()
 			continue
 		}
 		err = objs.bpfMaps.Connections.Delete(conn)
 		if err != nil {
 			log.Printf("Error deleting connection from map: %v", err)
+			failedConnectionDeletion.Inc()
 			continue
 		}
 		// if deletion is successful, add it to past links
