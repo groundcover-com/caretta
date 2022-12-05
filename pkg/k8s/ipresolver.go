@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -77,6 +78,12 @@ func (resolver *IPResolver) UpdateIPResolver() {
 func (resolver *IPResolver) ResolveIP(ip string) string {
 	if val, ok := resolver.ipsMap[ip]; ok {
 		return val
+	}
+	hosts, err := net.LookupAddr(ip)
+	if err == nil && len(hosts) > 0 && hosts[0] != "" {
+		result := hosts[0] + ":EXTERNAL"
+		resolver.ipsMap[ip] = result
+		return result
 	}
 	return ip
 }
@@ -195,6 +202,9 @@ func (resolver *IPResolver) updateIpMapping() {
 			resolver.ipsMap[nodeAddress.Address] = string(nodeAddress.Type) + "/" + node.Name + ":INTERNAL"
 		}
 	}
+
+	// localhost
+	resolver.ipsMap["0.0.0.0"] = "localhost"
 }
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
