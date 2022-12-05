@@ -119,8 +119,7 @@ static inline int parse_sock_data(struct sock* sock, struct connection_tuple* ou
     __be32 dst_addr = 0;
     __be16 src_port_be = 0;
     __be16 dst_port_be = 0;
-    u16 src_port = 0;
-    u16 dst_port = 0;
+
 
     // read connection tuple
 
@@ -141,7 +140,7 @@ static inline int parse_sock_data(struct sock* sock, struct connection_tuple* ou
         debug_print("Error reading src port");
         return -1;
     }
-    out_tuple->src_port = be_to_le(src_port);
+    out_tuple->src_port = be_to_le(src_port_be);
 
     err = bpf_core_read(&dst_port_be, sizeof(dst_port_be), &inet->inet_dport);
     if (err) {
