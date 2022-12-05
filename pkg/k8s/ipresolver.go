@@ -29,13 +29,15 @@ func SplitNamespace(fullname string) (string, string) {
 }
 
 type clusterSnapshot struct {
-	Pods         []v1.Pod
-	Nodes        []v1.Node
+	Pods         map[types.UID]v1.Pod
+	Nodes        map[types.UID]v1.Node
 	ReplicaSets  map[types.UID]appsv1.ReplicaSet
 	DaemonSets   map[types.UID]appsv1.DaemonSet
 	StatefulSets map[types.UID]appsv1.StatefulSet
 	Jobs         map[types.UID]batchv1.Job
 	Services     map[types.UID]v1.Service
+	Deployments  map[types.UID]appsv1.Deployment
+	CronJobs     map[types.UID]batchv1.CronJob
 }
 
 type ipMapping map[string]string
@@ -50,43 +52,54 @@ func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
 	return &IPResolver{
 		clientset: clientset,
 		snapshot: clusterSnapshot{
+			Pods:         make(map[types.UID]v1.Pod),
+			Nodes:        make(map[types.UID]v1.Node),
 			ReplicaSets:  make(map[types.UID]appsv1.ReplicaSet),
 			DaemonSets:   make(map[types.UID]appsv1.DaemonSet),
 			StatefulSets: make(map[types.UID]appsv1.StatefulSet),
 			Jobs:         make(map[types.UID]batchv1.Job),
 			Services:     make(map[types.UID]v1.Service),
+			Deployments:  make(map[types.UID]appsv1.Deployment),
+			CronJobs:     make(map[types.UID]batchv1.CronJob),
 		},
 		ipsMap: make(ipMapping),
 	}
 }
 
 // update the resolver's cache to the current cluster's state
-func (resolver IPResolver) UpdateIPResolver() {
+func (resolver *IPResolver) UpdateIPResolver() {
 	resolver.updateClusterSnapshot()
 	resolver.updateIpMapping()
 }
 
 // resolve the given IP from the resolver's cache
 // if not available, return the IP itself.
-func (resolver IPResolver) ResolveIP(ip string) string {
+func (resolver *IPResolver) ResolveIP(ip string) string {
 	if val, ok := resolver.ipsMap[ip]; ok {
 		return val
 	}
 	return ip
 }
 
-func (resolver IPResolver) updateClusterSnapshot() {
+func (resolver *IPResolver) updateClusterSnapshot() {
+
+	resolver.snapshot.Pods = make(map[types.UID]v1.Pod)
 	pods, err := resolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	resolver.snapshot.Pods = pods.Items
+	for _, pod := range pods.Items {
+		resolver.snapshot.Pods[pod.UID] = pod
+	}
 
+	resolver.snapshot.Nodes = make(map[types.UID]v1.Node)
 	nodes, err := resolver.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	resolver.snapshot.Nodes = nodes.Items
+	for _, node := range nodes.Items {
+		resolver.snapshot.Nodes[node.UID] = node
+	}
 
 	replicasets, err := resolver.clientset.AppsV1().ReplicaSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -127,11 +140,27 @@ func (resolver IPResolver) updateClusterSnapshot() {
 	for _, service := range services.Items {
 		resolver.snapshot.Services[service.UID] = service
 	}
+
+	deploymments, err := resolver.clientset.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, deployment := range deploymments.Items {
+		resolver.snapshot.Deployments[deployment.UID] = deployment
+	}
+
+	cronJobs, err := resolver.clientset.BatchV1().CronJobs("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, cronJob := range cronJobs.Items {
+		resolver.snapshot.CronJobs[cronJob.UID] = cronJob
+	}
 }
 
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
-func (resolver IPResolver) updateIpMapping() {
+func (resolver *IPResolver) updateIpMapping() {
 	// because IP collisions may occur and lead to overwritings in the map, the order is important
 	// we go from less "favorable" to more "favorable" -
 	// services -> running pods -> nodes
@@ -196,6 +225,18 @@ func getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.Owner
 			return nil, errors.New("Missing job for UID " + string(originalOwner.UID))
 		}
 		return metav1.GetControllerOf(&job), nil
+	case "Deployment":
+		deployment, ok := snapshot.Deployments[originalOwner.UID]
+		if !ok {
+			return nil, errors.New("Missing deployment for UID " + string(originalOwner.UID))
+		}
+		return metav1.GetControllerOf(&deployment), nil
+	case "CronJob":
+		cronJob, ok := snapshot.CronJobs[originalOwner.UID]
+		if !ok {
+			return nil, errors.New("Missing cronjob for UID " + string(originalOwner.UID))
+		}
+		return metav1.GetControllerOf(&cronJob), nil
 	}
 	return nil, errors.New("Unsupported kind for lookup - " + originalOwner.Kind)
 }

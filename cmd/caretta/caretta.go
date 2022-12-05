@@ -9,9 +9,8 @@ import (
 func main() {
 	log.Print("Caretta starting...")
 	caretta := caretta.NewCaretta()
+	defer caretta.Stop()
 
 	caretta.Start()
-	for {
-
-	}
+	<-caretta.StopSignal
 }

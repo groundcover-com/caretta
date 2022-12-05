@@ -38,19 +38,19 @@ func hash(s string) uint32 {
 }
 
 type Caretta struct {
-	stopSignal chan bool
-	bpfObjs    tracing.BpfObjects
+	StopSignal    chan bool
+	tracerObjects tracing.TracerEbpfObjects
 }
 
 func NewCaretta() *Caretta {
 	return &Caretta{
-		stopSignal: make(chan bool),
+		StopSignal: make(chan bool),
 	}
 }
 
-func (caretta Caretta) Start() {
+func (caretta *Caretta) Start() {
 	metrics.StartMetricsServer(PROMETHEUS_ENDPOINT, PROMETHEUS_PORT)
-	caretta.bpfObjs = tracing.LoadProbes()
+	caretta.tracerObjects = tracing.LoadProbes()
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -70,11 +70,14 @@ func (caretta Caretta) Start() {
 	go func() {
 		for {
 			select {
-			case <-caretta.stopSignal:
+			case <-caretta.StopSignal:
 				return
 			case <-pollingTicker.C:
 				var links map[tracing.NetworkLink]uint64
-				pastLinks, links = tracing.TracesPollingIteration(caretta.bpfObjs, pastLinks, *resolver)
+
+				resolver.UpdateIPResolver()
+
+				pastLinks, links = tracing.TracesPollingIteration(caretta.tracerObjects.BpfObjs, pastLinks, *resolver)
 				for link, throughput := range links {
 					clientName, clientNamespace := k8s.SplitNamespace(link.ClientHost)
 					serverName, serverNamespace := k8s.SplitNamespace(link.ServerHost)
@@ -95,7 +98,7 @@ func (caretta Caretta) Start() {
 	}()
 }
 
-func (caretta Caretta) Stop() {
+func (caretta *Caretta) Stop() {
 	log.Print("Stopping Caretta...")
-	caretta.stopSignal <- true
+	caretta.StopSignal <- true
 }
