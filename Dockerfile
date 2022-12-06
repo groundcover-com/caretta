@@ -1,7 +1,7 @@
 FROM golang:1.19
 
 WORKDIR /app
-COPY ./out/caretta ./
+COPY ./bin/caretta ./
 
 VOLUME /sys/kernel/debug
 

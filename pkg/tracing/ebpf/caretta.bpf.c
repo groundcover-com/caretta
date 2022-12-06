@@ -2,6 +2,7 @@
 #include <bpf_helpers.h>
 #include <bpf_core_read.h>
 #include <bpf_tracing.h>
+#include <string.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
@@ -115,8 +116,6 @@ static inline int parse_sock_data(struct sock* sock, struct connection_tuple* ou
     // initialize variables. IP addresses and ports are read originally big-endian,
     // and we will convert the ports to little-endian.
     int err = 0;
-    __be32 src_addr = 0;
-    __be32 dst_addr = 0;
     __be16 src_port_be = 0;
     __be16 dst_port_be = 0;
 
@@ -151,8 +150,6 @@ static inline int parse_sock_data(struct sock* sock, struct connection_tuple* ou
 
     
     // read throughput data
-    u64 bytes_sent = 0;
-    u64 bytes_received = 0;
 
     err = bpf_core_read(&out_throughput->bytes_received, sizeof(out_throughput->bytes_received), &tcp->bytes_received);
     if (err) {
