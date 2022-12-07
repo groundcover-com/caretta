@@ -1,8 +1,8 @@
+#include <vmlinux.h>
 #include <bpf_core_read.h>
 #include <bpf_helpers.h>
 #include <bpf_tracing.h>
 #include <string.h>
-#include <vmlinux.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
