@@ -168,6 +168,9 @@ func (resolver *IPResolver) updateClusterSnapshot() {
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
 func (resolver *IPResolver) updateIpMapping() {
+	// to avoid long-term errors, we don't save hits for long
+	resolver.ipsMap = make(ipMapping)
+
 	// because IP collisions may occur and lead to overwritings in the map, the order is important
 	// we go from less "favorable" to more "favorable" -
 	// services -> running pods -> nodes
