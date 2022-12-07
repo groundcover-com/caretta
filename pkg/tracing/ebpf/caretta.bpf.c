@@ -190,6 +190,11 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
     return -1;
   }
 
+  // skip unassigned sockets
+  if (conn_id.tuple.dst_port == 0 && conn_id.tuple.dst_ip == 0) {
+    return 0;
+  }
+
   // fill the conn_id extra details from sock_info map entry, or create one
   struct sock_info *sock_info = bpf_map_lookup_elem(&sock_infos, &sock);
   if (sock_info == 0) {
