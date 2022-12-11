@@ -8,15 +8,11 @@ UIDGID := $(shell stat -c '%u:%g' ${REPODIR})
 PROJECT_DIRNAME := $(shell basename ${REPODIR})
 CILIUM_EBPF_DIRECTORY := /tmp/cilium-ebpf
 BUILD_SCRIPTS_DIRECTORY=scripts/build
-
 BPF_CLANG := clang-12
 INCLUDE_C_FLAGS := -I/tmp/caretta_extra/libbpf_headers -I/tmp/${PROJECT_DIRNAME}/
 BPF_CFLAGS := -O2 -g -Wall -Werror -fdebug-prefix-map=/ebpf=. ${INCLUDE_C_FLAGS}
-
 IMAGE=caretta-builder
 VERSION=1
-
-
 
 .PHONY: build
 build: caretta
@@ -24,7 +20,6 @@ build: caretta
 .PHONY: run
 run: build
 	sudo ./bin/caretta
-	
 
 .PHONY: sum
 sum: go.sum
@@ -37,9 +32,6 @@ go.sum:
 download_libbpf_headers: 
 	${REPODIR}/${BUILD_SCRIPTS_DIRECTORY}/download_libbpf_headers.sh
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > /tmp/caretta_extra/libbpf_headers/vmlinux.h
-
-
-
 
 .PHONY: generate_ebpf
 generate_ebpf: ${BPF2GO_BINARY}_${BPF2GO_VERSION} \

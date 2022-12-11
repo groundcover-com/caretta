@@ -89,7 +89,6 @@ func (resolver *IPResolver) ResolveIP(ip string) string {
 }
 
 func (resolver *IPResolver) updateClusterSnapshot() {
-
 	resolver.snapshot.Pods = make(map[types.UID]v1.Pod)
 	pods, err := resolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -180,7 +179,6 @@ func (resolver *IPResolver) updateIpMapping() {
 		name := service.Name + ":" + service.Namespace
 
 		// TODO maybe try to match service to workload
-
 		for _, clusterIp := range service.Spec.ClusterIPs {
 			if clusterIp != "None" {
 				resolver.ipsMap[clusterIp] = name
