@@ -15,7 +15,8 @@ IMAGE=caretta-builder
 VERSION=1
 
 .PHONY: build
-build: caretta
+build: binary_directory generate_ebpf_in_docker cmd/caretta/caretta.go
+	go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 .PHONY: run
 run: build
@@ -45,10 +46,6 @@ ${BPF2GO_BINARY}_${BPF2GO_VERSION}:
 .PHONY: binary_directory
 binary_directory:
 	mkdir -p ${BIN_DIR}
-
-.PHONY: caretta
-caretta: binary_directory generate_ebpf_in_docker cmd/caretta/caretta.go
-	go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 .PHONY: build_builder_docker
 build_builder_docker:
