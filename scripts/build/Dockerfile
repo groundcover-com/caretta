@@ -32,18 +32,20 @@ RUN apt-get -y --no-install-recommends install make git clang-format clang-7 llv
 RUN apt-get update && apt-get install -y linux-tools-common linux-tools-aws linux-tools-5.11.0-27-generic linux-tools-5.11.0-1021-aws 
 
 RUN apt-get install -y software-properties-common && add-apt-repository ppa:longsleep/golang-backports
-RUN apt-get update && apt-get install -y musl-dev golang-1.19-go clang-12
+RUN apt-get update && apt-get install -y musl-dev clang-12 
+# RUN apt-get install golang-1.19-go
+
+COPY --from=golang:1.19-alpine /usr/local/go/ /usr/local/go/
 
 # Configure Go
-ENV GOROOT /usr/lib/go
+ENV GOROOT /usr/local/go
 ENV GOPATH /go
-ENV PATH /go/bin:$PATH
+ENV PATH /usr/local/go/bin:$PATH
 
 RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin
 RUN mkdir -p /tmp/caretta_extra/libbpf_headers
 
 RUN bpftool btf dump file /sys/kernel/btf/vmlinux format c > /tmp/caretta_extra/libbpf_headers/vmlinux.h
-
 
 WORKDIR $GOPATH
 

@@ -21,13 +21,6 @@ build: caretta
 run: build
 	sudo ./bin/caretta
 
-.PHONY: sum
-sum: go.sum
-
-go.sum:
-	go mod download github.com/cilium/ebpf
-	go get github.com/cilium/ebpf/internal/unix
-
 .PHONY: download_libbpf_headers
 download_libbpf_headers: 
 	${REPODIR}/${BUILD_SCRIPTS_DIRECTORY}/download_libbpf_headers.sh
@@ -36,6 +29,7 @@ download_libbpf_headers:
 .PHONY: generate_ebpf
 generate_ebpf: ${BPF2GO_BINARY}_${BPF2GO_VERSION} \
 				download_libbpf_headers
+	go mod vendor
 	(cd ${REPODIR}/pkg/tracing && \
 		GOPACKAGE=tracing ${REPODIR}/${BPF2GO_BINARY}_${BPF2GO_VERSION} \
 		-cc "${BPF_CLANG}" -cflags "${BPF_CFLAGS}"  \
@@ -53,7 +47,7 @@ binary_directory:
 	mkdir -p ${BIN_DIR}
 
 .PHONY: caretta
-caretta: binary_directory sum generate_ebpf_in_docker cmd/caretta/caretta.go
+caretta: binary_directory generate_ebpf_in_docker cmd/caretta/caretta.go
 	go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 .PHONY: build_builder_docker
