@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/groundcover-com/caretta/pkg/caretta"
 )
@@ -9,8 +12,12 @@ import (
 func main() {
 	log.Print("Caretta starting...")
 	caretta := caretta.NewCaretta()
-	defer caretta.Stop()
 
 	caretta.Start()
-	<-caretta.StopSignal
+
+	osSignal := make(chan os.Signal, 1)
+	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
+	<-osSignal
+	caretta.Stop()
+
 }

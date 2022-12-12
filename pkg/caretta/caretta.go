@@ -31,13 +31,13 @@ var (
 )
 
 type Caretta struct {
-	StopSignal    chan bool
+	stopSignal    chan bool
 	tracerObjects tracing.TracerEbpfObjects
 }
 
 func NewCaretta() *Caretta {
 	return &Caretta{
-		StopSignal: make(chan bool),
+		stopSignal: make(chan bool, 1),
 	}
 }
 
@@ -58,7 +58,7 @@ func (caretta *Caretta) Start() {
 	go func() {
 		for {
 			select {
-			case <-caretta.StopSignal:
+			case <-caretta.stopSignal:
 				return
 			case <-pollingTicker.C:
 				var links map[tracing.NetworkLink]uint64
@@ -80,7 +80,7 @@ func (caretta *Caretta) Start() {
 
 func (caretta *Caretta) Stop() {
 	log.Print("Stopping Caretta...")
-	caretta.StopSignal <- true
+	caretta.stopSignal <- true
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {
