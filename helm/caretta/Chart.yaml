@@ -1,0 +1,6 @@
+version: 0.0.1
+apiVersion: v2
+appVersion: 0.0.1
+name: caretta
+description: A helm chart for Caretta service map.
+type: application

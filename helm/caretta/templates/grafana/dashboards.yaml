@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caretta-grafana-dashboard
+  namespace: {{ .Release.Namespace }}
+data:
+  map.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "gridPos": {
+            "h": 18,
+            "w": 14,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "interval": "15s",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (id, title, subTitle) (increase((label_replace(label_replace(label_replace((caretta_links_observed{ClientNamespace=~\"$namespace\"} or caretta_links_observed{ServerNamespace=~\"$namespace\"}), \"subTitle\", \"$1\", \"ServerNamespace\", \"(.*)\"), \"title\", \"$1\", \"ServerName\", \"(.*)\"), \"id\", \"$1\", \"ServerId\", \"(.*)\") or label_replace(label_replace(label_replace((caretta_links_observed{ClientNamespace=~\"$namespace\"} or caretta_links_observed{ServerNamespace=~\"$namespace\"}), \"subTitle\", \"$1\", \"ClientNamespace\", \"(.*)\"), \"title\", \"$1\", \"ClientName\", \"(.*)\"), \"id\", \"$1\", \"ClientId\", \"(.*)\")  )[$__range:])) > 0",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "nodes"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (id, source, target, mainStat) (increase((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{ClientNamespace=~\"$namespace\"} or caretta_links_observed{ServerNamespace=~\"$namespace\"}), \"id\", \"$1\", \"LinkId\", \"(.*)\"), \"source\", \"$1\", \"ClientId\", \"(.*)\"), \"target\", \"$1\", \"ServerId\", \"(.*)\"), \"mainStat\", \"$1\", \"ServerPort\", \"(.*)\"))[$__range:])) > 0",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "edges"
+            }
+          ],
+          "title": "Map Namespace inbound+internal+outbound",
+          "type": "nodeGraph"
+        }
+      ],
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": "(.*)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "definition": "query_result(caretta_links_observed)",
+            "hide": 0,
+            "includeAll": true,
+            "multi": true,
+            "name": "namespace",
+            "options": [],
+            "query": {
+              "query": "query_result(caretta_links_observed)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/.*Namespace=\"([^\"]*).*/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-5m",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Caretta Service Map",
+      "uid": "pF1NHmK4k",
+      "version": 1,
+      "weekStart": ""
+    }
