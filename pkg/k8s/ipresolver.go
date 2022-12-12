@@ -210,7 +210,7 @@ func (resolver *IPResolver) updateIpMapping() {
 		name := resolvePodName(&resolver.snapshot, &pod)
 		podPhase := pod.Status.Phase
 		for _, podIp := range pod.Status.PodIPs {
-			// if ip already in the map, override only if current pod is running
+			// if ip is already in the map, override only if current pod is running
 			_, ok := resolver.ipsMap[podIp.IP]
 			if !ok || podPhase == v1.PodRunning {
 				resolver.ipsMap[podIp.IP] = name

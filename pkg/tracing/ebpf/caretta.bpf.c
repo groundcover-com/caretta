@@ -6,7 +6,7 @@
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-#define MAX_CONNECTIONS 10000000
+#define MAX_CONNECTIONS 1000000
 
 #define DEBUG
 #ifdef DEBUG
@@ -100,7 +100,7 @@ struct bpf_map_def SEC("maps") connections = {
     .max_entries = MAX_CONNECTIONS,
 };
 
-// helper to conver short int from BE to LE
+// helper to convert short int from BE to LE
 static inline u16 be_to_le(__be16 be) { return (be >> 8) | (be << 8); }
 
 // function for parsing the struct sock
@@ -239,9 +239,9 @@ int handle_sock_set_state(struct set_state_args *args) {
 
   struct sock *sock = (struct sock *)args->skaddr;
 
-  // handle according the new state
+  // handle according to the new state
   if (args->newstate == TCP_SYN_RECV) {
-    // this is a server got syn after listen
+    // this is a server getting syn after listen
     struct connection_identifier conn_id;
     memset(&conn_id, 0, sizeof(conn_id));
     struct connection_throughput_stats throughput;
