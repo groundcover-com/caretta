@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/groundcover-com/caretta/pkg/k8s"
+	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/groundcover-com/caretta/pkg/metrics"
 	"github.com/groundcover-com/caretta/pkg/tracing"
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,17 +45,12 @@ func (caretta *Caretta) Start() {
 	metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
 	caretta.tracerObjects = tracing.LoadProbes()
 
-	config, err := rest.InClusterConfig()
+	clientset, err := caretta.getClientSet()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	resolver := k8s.NewIPResolver(clientset)
+	resolver := caretta_k8s.NewIPResolver(clientset)
 	pollingTicker := time.NewTicker(pollingIntervalSeconds * time.Second)
 
 	pastLinks := make(map[tracing.NetworkLink]uint64)
@@ -76,19 +71,7 @@ func (caretta *Caretta) Start() {
 
 				pastLinks, links = tracing.TracesPollingIteration(caretta.tracerObjects.BpfObjs, pastLinks, *resolver)
 				for link, throughput := range links {
-					clientName, clientNamespace := k8s.SplitNamespace(link.ClientHost)
-					serverName, serverNamespace := k8s.SplitNamespace(link.ServerHost)
-					linksMetrics.With(prometheus.Labels{
-						"LinkId":          strconv.Itoa(int(hash(link.ClientHost+link.ServerHost) + link.Role)),
-						"ClientId":        strconv.Itoa(int(hash(link.ClientHost))),
-						"ClientName":      clientName,
-						"ClientNamespace": clientNamespace,
-						"ServerId":        strconv.Itoa(int(hash(link.ServerHost))),
-						"ServerName":      serverName,
-						"ServerNamespace": serverNamespace,
-						"ServerPort":      strconv.Itoa(int(link.ServerPort)),
-						"Role":            strconv.Itoa(int(link.Role)),
-					}).Set(float64(throughput))
+					caretta.handleLink(&link, throughput)
 				}
 			}
 		}
@@ -98,6 +81,35 @@ func (caretta *Caretta) Start() {
 func (caretta *Caretta) Stop() {
 	log.Print("Stopping Caretta...")
 	caretta.StopSignal <- true
+}
+
+func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {
+	clientName, clientNamespace := caretta_k8s.SplitNamespace(link.ClientHost)
+	serverName, serverNamespace := caretta_k8s.SplitNamespace(link.ServerHost)
+	linksMetrics.With(prometheus.Labels{
+		"LinkId":          strconv.Itoa(int(hash(link.ClientHost+link.ServerHost) + link.Role)),
+		"ClientId":        strconv.Itoa(int(hash(link.ClientHost))),
+		"ClientName":      clientName,
+		"ClientNamespace": clientNamespace,
+		"ServerId":        strconv.Itoa(int(hash(link.ServerHost))),
+		"ServerName":      serverName,
+		"ServerNamespace": serverNamespace,
+		"ServerPort":      strconv.Itoa(int(link.ServerPort)),
+		"Role":            strconv.Itoa(int(link.Role)),
+	}).Set(float64(throughput))
+}
+
+func (caretta *Caretta) getClientSet() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
 }
 
 // simple hash function from string to uint32
