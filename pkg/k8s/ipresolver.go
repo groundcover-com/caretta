@@ -159,11 +159,11 @@ func (resolver *IPResolver) updateClusterSnapshot() error {
 		}
 	}
 
-	deploymments, err := resolver.clientset.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
+	deployments, err := resolver.clientset.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		errorStrings = append(errorStrings, fmt.Sprintf("error updating deployments %v", err))
 	} else {
-		for _, deployment := range deploymments.Items {
+		for _, deployment := range deployments.Items {
 			resolver.snapshot.Deployments[deployment.UID] = deployment
 		}
 	}
