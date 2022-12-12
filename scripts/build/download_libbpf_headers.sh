@@ -44,13 +44,4 @@ if [ "$?" -ne 0 ]; then
     exit 1
 fi
 
-# # Fetch compact vmlinux file from cilium's ebpf repository.
-# # This is not a libbpf header per-se, but it's close enough that we put it in the same location.
-# curl -s -o "$HEADERS_DIRECTORY"/vmlinux.h \
-#     https://raw.githubusercontent.com/cilium/ebpf/v${CILIUM_VMLINUX_VERSION}/examples/headers/common.h
-# if [ "$?" -ne 0 ]; then
-#     echo "Failed to download vmlinux compact version from cilium's repository."
-#     exit 1
-# fi
-
 echo "Successfully downloaded libbpf headers." 1>&2
