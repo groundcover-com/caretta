@@ -28,33 +28,6 @@ var (
 	})
 )
 
-// reduce a specific connection to a general link
-func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPResolver) NetworkLink {
-	var link NetworkLink
-	link.Role = connection.Role
-
-	// TODO add k8s resolving here after k8s package is implemented
-	// in the meantime, host is the ip
-	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
-	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
-
-	if connection.Role == ClientConnectionRole {
-		// Src is Client, Dst is Server, Port is DstPort
-		link.ClientHost = srcHost
-		link.ServerHost = dstHost
-		link.ServerPort = connection.Tuple.DstPort
-	} else if connection.Role == ServerConnectionRole {
-		// Dst is Client, Src is Server, Port is SrcPort
-		link.ClientHost = dstHost
-		link.ServerHost = srcHost
-		link.ServerPort = connection.Tuple.SrcPort
-	} else {
-		// shouldn't get here
-		log.Fatal("Un-roled connection")
-	}
-	return link
-}
-
 type BpfObjects *bpfObjects
 
 // a single polling from the eBPF maps
@@ -131,4 +104,31 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 
 	return pastLinks, currentLinks
 
+}
+
+// reduce a specific connection to a general link
+func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPResolver) NetworkLink {
+	var link NetworkLink
+	link.Role = connection.Role
+
+	// TODO add k8s resolving here after k8s package is implemented
+	// in the meantime, host is the ip
+	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
+	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
+
+	if connection.Role == ClientConnectionRole {
+		// Src is Client, Dst is Server, Port is DstPort
+		link.ClientHost = srcHost
+		link.ServerHost = dstHost
+		link.ServerPort = connection.Tuple.DstPort
+	} else if connection.Role == ServerConnectionRole {
+		// Dst is Client, Src is Server, Port is SrcPort
+		link.ClientHost = dstHost
+		link.ServerHost = srcHost
+		link.ServerPort = connection.Tuple.SrcPort
+	} else {
+		// shouldn't get here
+		log.Fatal("Un-roled connection")
+	}
+	return link
 }

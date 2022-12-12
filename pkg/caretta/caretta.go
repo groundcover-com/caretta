@@ -30,13 +30,6 @@ var (
 	})
 )
 
-// simple hash function from string to uint32
-func hash(s string) uint32 {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return h.Sum32()
-}
-
 type Caretta struct {
 	StopSignal    chan bool
 	tracerObjects tracing.TracerEbpfObjects
@@ -79,8 +72,8 @@ func (caretta *Caretta) Start() {
 
 				pastLinks, links = tracing.TracesPollingIteration(caretta.tracerObjects.BpfObjs, pastLinks, *resolver)
 				for link, throughput := range links {
-					clientName, clientNamespace := k8s.SplitNamespace(link.ClientHost)
-					serverName, serverNamespace := k8s.SplitNamespace(link.ServerHost)
+					clientName, clientNamespace := k8s.splitNamespace(link.ClientHost)
+					serverName, serverNamespace := k8s.splitNamespace(link.ServerHost)
 					linksMetrics.With(prometheus.Labels{
 						"LinkId":          strconv.Itoa(int(hash(link.ClientHost+link.ServerHost) + link.Role)),
 						"ClientId":        strconv.Itoa(int(hash(link.ClientHost))),
@@ -101,4 +94,11 @@ func (caretta *Caretta) Start() {
 func (caretta *Caretta) Stop() {
 	log.Print("Stopping Caretta...")
 	caretta.StopSignal <- true
+}
+
+// simple hash function from string to uint32
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }
