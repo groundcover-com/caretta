@@ -48,4 +48,3 @@ RUN mkdir -p /tmp/caretta_extra/libbpf_headers
 RUN bpftool btf dump file /sys/kernel/btf/vmlinux format c > /tmp/caretta_extra/libbpf_headers/vmlinux.h
 
 WORKDIR $GOPATH
-
