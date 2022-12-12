@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -68,9 +69,12 @@ func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
 }
 
 // update the resolver's cache to the current cluster's state
-func (resolver *IPResolver) Update() {
-	resolver.updateClusterSnapshot()
+func (resolver *IPResolver) Update() error {
+	if err := resolver.updateClusterSnapshot(); err != nil {
+		return err
+	}
 	resolver.updateIpMapping()
+	return nil
 }
 
 // resolve the given IP from the resolver's cache
@@ -88,80 +92,96 @@ func (resolver *IPResolver) ResolveIP(ip string) string {
 	return ip
 }
 
-func (resolver *IPResolver) updateClusterSnapshot() {
-	resolver.snapshot.Pods = make(map[types.UID]v1.Pod)
+func (resolver *IPResolver) updateClusterSnapshot() error {
+	errorStrings := make([]string, 0)
 	pods, err := resolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, pod := range pods.Items {
-		resolver.snapshot.Pods[pod.UID] = pod
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating pods %v", err))
+	} else {
+		resolver.snapshot.Pods = make(map[types.UID]v1.Pod)
+		for _, pod := range pods.Items {
+			resolver.snapshot.Pods[pod.UID] = pod
+		}
 	}
 
 	resolver.snapshot.Nodes = make(map[types.UID]v1.Node)
 	nodes, err := resolver.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, node := range nodes.Items {
-		resolver.snapshot.Nodes[node.UID] = node
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating nodes %v", err))
+	} else {
+		for _, node := range nodes.Items {
+			resolver.snapshot.Nodes[node.UID] = node
+		}
 	}
 
 	replicasets, err := resolver.clientset.AppsV1().ReplicaSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, rs := range replicasets.Items {
-		resolver.snapshot.ReplicaSets[rs.ObjectMeta.UID] = rs
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating replicasets %v", err))
+	} else {
+		for _, rs := range replicasets.Items {
+			resolver.snapshot.ReplicaSets[rs.ObjectMeta.UID] = rs
+		}
 	}
 
 	daemonsets, err := resolver.clientset.AppsV1().DaemonSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, ds := range daemonsets.Items {
-		resolver.snapshot.DaemonSets[ds.ObjectMeta.UID] = ds
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating daemonsets %v", err))
+	} else {
+		for _, ds := range daemonsets.Items {
+			resolver.snapshot.DaemonSets[ds.ObjectMeta.UID] = ds
+		}
 	}
 
 	statefulsets, err := resolver.clientset.AppsV1().StatefulSets("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, ss := range statefulsets.Items {
-		resolver.snapshot.StatefulSets[ss.ObjectMeta.UID] = ss
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating statefulsets %v", err))
+	} else {
+		for _, ss := range statefulsets.Items {
+			resolver.snapshot.StatefulSets[ss.ObjectMeta.UID] = ss
+		}
 	}
 
 	jobs, err := resolver.clientset.BatchV1().Jobs("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, job := range jobs.Items {
-		resolver.snapshot.Jobs[job.ObjectMeta.UID] = job
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating jobs %v", err))
+	} else {
+		for _, job := range jobs.Items {
+			resolver.snapshot.Jobs[job.ObjectMeta.UID] = job
+		}
 	}
 
 	services, err := resolver.clientset.CoreV1().Services("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, service := range services.Items {
-		resolver.snapshot.Services[service.UID] = service
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating services %v", err))
+	} else {
+		for _, service := range services.Items {
+			resolver.snapshot.Services[service.UID] = service
+		}
 	}
 
 	deploymments, err := resolver.clientset.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-	for _, deployment := range deploymments.Items {
-		resolver.snapshot.Deployments[deployment.UID] = deployment
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating deployments %v", err))
+	} else {
+		for _, deployment := range deploymments.Items {
+			resolver.snapshot.Deployments[deployment.UID] = deployment
+		}
 	}
 
 	cronJobs, err := resolver.clientset.BatchV1().CronJobs("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
+		errorStrings = append(errorStrings, fmt.Sprintf("error updating cron jobs %v", err))
+	} else {
+		for _, cronJob := range cronJobs.Items {
+			resolver.snapshot.CronJobs[cronJob.UID] = cronJob
+		}
 	}
-	for _, cronJob := range cronJobs.Items {
-		resolver.snapshot.CronJobs[cronJob.UID] = cronJob
+
+	if len(errorStrings) > 1 {
+		return errors.New(strings.Join(errorStrings, "; "))
 	}
+
+	return nil
 }
 
 // add mapping from ip to resolved host to an existing map,

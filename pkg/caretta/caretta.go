@@ -68,7 +68,11 @@ func (caretta *Caretta) Start() {
 			case <-pollingTicker.C:
 				var links map[tracing.NetworkLink]uint64
 
-				resolver.Update()
+				err := resolver.Update()
+				if err != nil {
+					log.Printf("Error updating snapshot of cluster state, skipping iteration")
+					continue
+				}
 
 				pastLinks, links = tracing.TracesPollingIteration(caretta.tracerObjects.BpfObjs, pastLinks, *resolver)
 				for link, throughput := range links {
