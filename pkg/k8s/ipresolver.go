@@ -68,7 +68,7 @@ func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
 }
 
 // update the resolver's cache to the current cluster's state
-func (resolver *IPResolver) UpdateIPResolver() {
+func (resolver *IPResolver) Update() {
 	resolver.updateClusterSnapshot()
 	resolver.updateIpMapping()
 }
