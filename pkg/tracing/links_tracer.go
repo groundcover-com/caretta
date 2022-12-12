@@ -38,12 +38,12 @@ func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPReso
 	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
 	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
 
-	if connection.Role == CONNECTION_ROLE_CLIENT {
+	if connection.Role == ClientConnectionRole {
 		// Src is Client, Dst is Server, Port is DstPort
 		link.ClientHost = srcHost
 		link.ServerHost = dstHost
 		link.ServerPort = connection.Tuple.DstPort
-	} else if connection.Role == CONNECTION_ROLE_SERVER {
+	} else if connection.Role == ServerConnectionRole {
 		// Dst is Client, Src is Server, Port is SrcPort
 		link.ClientHost = dstHost
 		link.ServerHost = srcHost
@@ -88,7 +88,7 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 		}
 
 		// filter unroled connections (probably indicates a bug)
-		if conn.Role == CONNECTION_ROLE_UNKNOWN {
+		if conn.Role == UnknownConnectionRole {
 			unroledCounter++
 			continue
 		}

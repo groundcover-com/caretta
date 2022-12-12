@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	CONNECTION_ROLE_UNKNOWN = iota
-	CONNECTION_ROLE_CLIENT  = iota
-	CONNECTION_ROLE_SERVER  = iota
+	UnknownConnectionRole = iota
+	ClientConnectionRole  = iota
+	ServerConnectionRole  = iota
 )
 
 type IP uint32

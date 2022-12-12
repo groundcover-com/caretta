@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	PROMETHEUS_ENDPOINT   = "/metrics"
-	PROMETHEUS_PORT       = ":7117"
-	POLLING_INTERVAL_SECS = 5
+	prometheusEndpoint     = "/metrics"
+	prometheusPort         = ":7117"
+	pollingIntervalSeconds = 5
 )
 
 var (
@@ -49,7 +49,7 @@ func NewCaretta() *Caretta {
 }
 
 func (caretta *Caretta) Start() {
-	metrics.StartMetricsServer(PROMETHEUS_ENDPOINT, PROMETHEUS_PORT)
+	metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
 	caretta.tracerObjects = tracing.LoadProbes()
 
 	config, err := rest.InClusterConfig()
@@ -63,7 +63,7 @@ func (caretta *Caretta) Start() {
 	}
 
 	resolver := k8s.NewIPResolver(clientset)
-	pollingTicker := time.NewTicker(POLLING_INTERVAL_SECS * time.Second)
+	pollingTicker := time.NewTicker(pollingIntervalSeconds * time.Second)
 
 	pastLinks := make(map[tracing.NetworkLink]uint64)
 
