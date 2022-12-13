@@ -40,13 +40,11 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 	unroledCounter := 0
 	loopbackCounter := 0
 
-	var connectionsToDelete []ConnectionIdentifier
 	currentLinks := make(map[NetworkLink]uint64)
+	var connectionsToDelete []ConnectionIdentifier
 
-	var (
-		conn       ConnectionIdentifier
-		throughput ConnectionThroughputStats
-	)
+	var conn ConnectionIdentifier
+	var throughput ConnectionThroughputStats
 
 	entries := objs.bpfMaps.Connections.Iterate()
 	// iterate the map from the eBPF program
