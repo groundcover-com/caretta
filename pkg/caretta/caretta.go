@@ -31,8 +31,8 @@ var (
 )
 
 type Caretta struct {
-	stopSignal    chan bool
-	tracerObjects tracing.TracerEbpfObjects
+	stopSignal chan bool
+	tracer     tracing.LinksTracer
 }
 
 func NewCaretta() *Caretta {
@@ -45,17 +45,18 @@ func (caretta *Caretta) Start() {
 	metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
 
 	var err error
-	caretta.tracerObjects, err = tracing.LoadProbes()
-	if err != nil {
-		log.Fatalf("Couldn't load probes - %v", err)
-	}
 
 	clientset, err := caretta.getClientSet()
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
-
 	resolver := caretta_k8s.NewIPResolver(clientset)
+
+	caretta.tracer, err = tracing.NewTracer(resolver)
+	if err != nil {
+		log.Fatalf("Couldn't load probes - %v", err)
+	}
+
 	pollingTicker := time.NewTicker(pollingIntervalSeconds * time.Second)
 
 	pastLinks := make(map[tracing.NetworkLink]uint64)
@@ -74,7 +75,7 @@ func (caretta *Caretta) Start() {
 					continue
 				}
 
-				pastLinks, links = tracing.TracesPollingIteration(caretta.tracerObjects.BpfObjs, pastLinks, *resolver)
+				pastLinks, links = caretta.tracer.TracesPollingIteration(pastLinks)
 				for link, throughput := range links {
 					caretta.handleLink(&link, throughput)
 				}

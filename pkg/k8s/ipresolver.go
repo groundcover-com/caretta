@@ -43,14 +43,14 @@ type clusterSnapshot struct {
 
 type ipMapping map[string]string
 
-type IPResolver struct {
+type K8sIPResolver struct {
 	clientset *kubernetes.Clientset
 	snapshot  clusterSnapshot
 	ipsMap    ipMapping
 }
 
-func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
-	return &IPResolver{
+func NewIPResolver(clientset *kubernetes.Clientset) *K8sIPResolver {
+	return &K8sIPResolver{
 		clientset: clientset,
 		snapshot: clusterSnapshot{
 			Pods:         make(map[types.UID]v1.Pod),
@@ -68,7 +68,7 @@ func NewIPResolver(clientset *kubernetes.Clientset) *IPResolver {
 }
 
 // update the resolver's cache to the current cluster's state
-func (resolver *IPResolver) Update() error {
+func (resolver *K8sIPResolver) Update() error {
 	if err := resolver.updateClusterSnapshot(); err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (resolver *IPResolver) Update() error {
 
 // resolve the given IP from the resolver's cache
 // if not available, return the IP itself.
-func (resolver *IPResolver) ResolveIP(ip string) string {
+func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 	if val, ok := resolver.ipsMap[ip]; ok {
 		return val
 	}
@@ -91,7 +91,7 @@ func (resolver *IPResolver) ResolveIP(ip string) string {
 	return ip
 }
 
-func (resolver *IPResolver) updateClusterSnapshot() error {
+func (resolver *K8sIPResolver) updateClusterSnapshot() error {
 	pods, err := resolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return errors.New("error getting pods, aborting snapshot update")
@@ -171,7 +171,7 @@ func (resolver *IPResolver) updateClusterSnapshot() error {
 
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
-func (resolver *IPResolver) updateIpMapping() {
+func (resolver *K8sIPResolver) updateIpMapping() {
 	// to avoid long-term errors, we don't save hits for long
 	resolver.ipsMap = make(ipMapping)
 
@@ -215,7 +215,7 @@ func (resolver *IPResolver) updateIpMapping() {
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
 // the snapshot is maintained to avoid using an API request for each resolving
-func (resolver *IPResolver) getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
+func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
 	switch originalOwner.Kind {
 	case "ReplicaSet":
 		replicaSet, ok := snapshot.ReplicaSets[originalOwner.UID]
@@ -257,7 +257,7 @@ func (resolver *IPResolver) getControllerOfOwner(snapshot *clusterSnapshot, orig
 	return nil, errors.New("Unsupported kind for lookup - " + originalOwner.Kind)
 }
 
-func (resolver *IPResolver) resolvePodName(pod *v1.Pod) string {
+func (resolver *K8sIPResolver) resolvePodName(pod *v1.Pod) string {
 	name := pod.Name + ":" + pod.Namespace
 	owner := metav1.GetControllerOf(pod)
 	for owner != nil {

@@ -13,6 +13,11 @@ const (
 
 type IP uint32
 
+type IPResolver interface {
+	Update() error
+	ResolveIP(string) string
+}
+
 func (ip IP) String() string {
 	netIp := make(net.IP, 4)
 	binary.LittleEndian.PutUint32(netIp, uint32(ip))

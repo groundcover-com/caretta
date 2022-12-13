@@ -3,8 +3,6 @@ package tracing
 import (
 	"log"
 
-	"github.com/cilium/ebpf"
-	"github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -31,9 +29,26 @@ var (
 
 type BpfObjects *bpfObjects
 
+type LinksTracer struct {
+	ebpfObjects TracerEbpfObjects
+	resolver    IPResolver
+}
+
+// initializes a LinksTracer object and loads probes into it
+func NewTracer(resolver IPResolver) (LinksTracer, error) {
+	tracer := LinksTracer{resolver: resolver}
+	return tracer, tracer.LoadBpf()
+}
+
+func (tracer *LinksTracer) LoadBpf() error {
+	var err error
+	tracer.ebpfObjects, err = LoadProbes()
+	return err
+}
+
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, resolver k8s.IPResolver) (map[NetworkLink]uint64, map[NetworkLink]uint64) {
+func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
@@ -46,7 +61,7 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 	var conn ConnectionIdentifier
 	var throughput ConnectionThroughputStats
 
-	entries := objs.bpfMaps.Connections.Iterate()
+	entries := tracer.ebpfObjects.BpfObjs.bpfMaps.Connections.Iterate()
 	// iterate the map from the eBPF program
 	for entries.Next(&conn, &throughput) {
 		// filter unnecessary connection
@@ -63,7 +78,7 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 			continue
 		}
 
-		link := reduceConnectionToLink(conn, resolver)
+		link := tracer.reduceConnectionToLink(conn)
 		currentLinks[link] += throughput.BytesSent
 
 		if throughput.IsActive == 0 {
@@ -81,40 +96,39 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 
 	// delete connections marked to delete
 	for _, conn := range connectionsToDelete {
-		link := reduceConnectionToLink(conn, resolver)
-		deleteAndStoreConnection(objs.bpfMaps.Connections, &conn, pastLinks, &link)
+		tracer.deleteAndStoreConnection(&conn, pastLinks)
 	}
 
 	return pastLinks, currentLinks
 
 }
 
-func deleteAndStoreConnection(connections *ebpf.Map, conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64, link *NetworkLink) {
+func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64) {
 	// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
 	var throughput ConnectionThroughputStats
-	err := connections.Lookup(conn, &throughput)
+	err := tracer.ebpfObjects.BpfObjs.bpfMaps.Connections.Lookup(conn, &throughput)
 	if err != nil {
 		log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
 		failedConnectionDeletion.Inc()
 		return
 	}
-	err = connections.Delete(conn)
+	err = tracer.ebpfObjects.BpfObjs.bpfMaps.Connections.Delete(conn)
 	if err != nil {
 		log.Printf("Error deleting connection from map: %v", err)
 		failedConnectionDeletion.Inc()
 		return
 	}
 	// if deletion is successful, add it to past links
-	pastLinks[*link] += throughput.BytesSent
+	pastLinks[tracer.reduceConnectionToLink(*conn)] += throughput.BytesSent
 }
 
 // reduce a specific connection to a general link
-func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPResolver) NetworkLink {
+func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifier) NetworkLink {
 	var link NetworkLink
 	link.Role = connection.Role
 
-	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
-	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
+	srcHost := tracer.resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
+	dstHost := tracer.resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
 
 	if connection.Role == ClientConnectionRole {
 		// Src is Client, Dst is Server, Port is DstPort
