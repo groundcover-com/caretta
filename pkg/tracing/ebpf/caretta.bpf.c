@@ -60,7 +60,7 @@ struct connection_tuple {
 // due to socket reuses, each of the members (beside id) may change while
 // maintaing the others.
 struct connection_identifier {
-  u32 id; // program-genetated unique
+  u32 id; // uniquely generated id
   u32 pid;
   struct connection_tuple tuple;
   enum connection_role role;
@@ -236,7 +236,6 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
 
 SEC("tracepoint/sock/inet_sock_set_state")
 int handle_sock_set_state(struct set_state_args *args) {
-
   struct sock *sock = (struct sock *)args->skaddr;
 
   // handle according to the new state
