@@ -41,18 +41,16 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 
 	var connectionsToDelete []ConnectionIdentifier
 	currentLinks := make(map[NetworkLink]uint64)
-	entries := objs.bpfMaps.Connections.Iterate()
 
 	var (
 		conn       ConnectionIdentifier
 		throughput ConnectionThroughputStats
 	)
 
+	entries := objs.bpfMaps.Connections.Iterate()
 	// iterate the map from the eBPF program
 	for entries.Next(&conn, &throughput) {
 		// filter unnecessary connection
-		// TODO
-		// TODO add metrics on skips
 
 		// skip loopback connections
 		if conn.Tuple.SrcIp == conn.Tuple.DstIp {
@@ -111,8 +109,6 @@ func reduceConnectionToLink(connection ConnectionIdentifier, resolver k8s.IPReso
 	var link NetworkLink
 	link.Role = connection.Role
 
-	// TODO add k8s resolving here after k8s package is implemented
-	// in the meantime, host is the ip
 	srcHost := resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
 	dstHost := resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
 

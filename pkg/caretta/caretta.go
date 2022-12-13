@@ -43,7 +43,12 @@ func NewCaretta() *Caretta {
 
 func (caretta *Caretta) Start() {
 	metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
-	caretta.tracerObjects = tracing.LoadProbes()
+
+	var err error
+	caretta.tracerObjects, err = tracing.LoadProbes()
+	if err != nil {
+		log.Fatalf("Couldn't load probes - %v", err)
+	}
 
 	clientset, err := caretta.getClientSet()
 	if err != nil {

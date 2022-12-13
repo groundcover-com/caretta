@@ -192,7 +192,7 @@ func (resolver *IPResolver) updateIpMapping() {
 	}
 
 	for _, pod := range resolver.snapshot.Pods {
-		name := resolvePodName(&resolver.snapshot, &pod)
+		name := resolver.resolvePodName(&pod)
 		podPhase := pod.Status.Phase
 		for _, podIp := range pod.Status.PodIPs {
 			// if ip is already in the map, override only if current pod is running
@@ -215,7 +215,7 @@ func (resolver *IPResolver) updateIpMapping() {
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
 // the snapshot is maintained to avoid using an API request for each resolving
-func getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
+func (resolver *IPResolver) getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
 	switch originalOwner.Kind {
 	case "ReplicaSet":
 		replicaSet, ok := snapshot.ReplicaSets[originalOwner.UID]
@@ -257,13 +257,13 @@ func getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.Owner
 	return nil, errors.New("Unsupported kind for lookup - " + originalOwner.Kind)
 }
 
-func resolvePodName(snapshot *clusterSnapshot, pod *v1.Pod) string {
+func (resolver *IPResolver) resolvePodName(pod *v1.Pod) string {
 	name := pod.Name + ":" + pod.Namespace
 	owner := metav1.GetControllerOf(pod)
 	for owner != nil {
-		var err error // to avoid declaring an unused var
+		var err error
 		name = owner.Name + ":" + pod.Namespace
-		owner, err = getControllerOfOwner(snapshot, owner)
+		owner, err = resolver.getControllerOfOwner(&resolver.snapshot, owner)
 		if err != nil {
 			log.Printf("Error retreiving owner of %v - %v", name, err)
 		}

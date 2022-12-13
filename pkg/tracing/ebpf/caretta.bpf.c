@@ -8,6 +8,9 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 
 #define MAX_CONNECTIONS 1000000
 
+#define BPF_SUCCESS 0
+#define BPF_ERROR -1
+
 #define DEBUG
 #ifdef DEBUG
 #define DEBUG_TEST 1
@@ -110,7 +113,7 @@ parse_sock_data(struct sock *sock, struct connection_tuple *out_tuple,
 
   if (sock == NULL) {
     debug_print("invalid sock received");
-    return -1;
+    return BPF_ERROR;
   }
 
   // struct sock wraps struct tcp_sock and struct inet_sock as its first member
@@ -125,93 +128,90 @@ parse_sock_data(struct sock *sock, struct connection_tuple *out_tuple,
 
   // read connection tuple
 
-  err = bpf_core_read(&out_tuple->src_ip, sizeof(out_tuple->src_ip),
-                      &inet->inet_saddr);
-  if (err) {
+  if (0 != bpf_core_read(&out_tuple->src_ip, sizeof(out_tuple->src_ip),
+                      &inet->inet_saddr)) {
     debug_print("Error reading source ip");
-    return -1;
+    return BPF_ERROR;
   }
 
-  err = bpf_core_read(&out_tuple->dst_ip, sizeof(out_tuple->dst_ip),
-                      &inet->inet_daddr);
-  if (err) {
+  if (0 != bpf_core_read(&out_tuple->dst_ip, sizeof(out_tuple->dst_ip),
+                      &inet->inet_daddr)) {
     debug_print("Error reading dest ip");
-    return -1;
+    return BPF_ERROR;
   }
 
-  err = bpf_core_read(&src_port_be, sizeof(src_port_be), &inet->inet_sport);
-  if (err) {
+  if (0 != bpf_core_read(&src_port_be, sizeof(src_port_be), &inet->inet_sport)) {
     debug_print("Error reading src port");
-    return -1;
+    return BPF_ERROR;
   }
   out_tuple->src_port = be_to_le(src_port_be);
 
-  err = bpf_core_read(&dst_port_be, sizeof(dst_port_be), &inet->inet_dport);
-  if (err) {
+  if (0 != bpf_core_read(&dst_port_be, sizeof(dst_port_be), &inet->inet_dport)) {
     debug_print("Error reading dst port");
-    return -1;
+    return BPF_ERROR;
   }
   out_tuple->dst_port = be_to_le(dst_port_be);
 
   // read throughput data
 
-  err = bpf_core_read(&out_throughput->bytes_received,
+  if (0 != bpf_core_read(&out_throughput->bytes_received,
                       sizeof(out_throughput->bytes_received),
-                      &tcp->bytes_received);
-  if (err) {
+                      &tcp->bytes_received)) {
     debug_print("Error reading bytes_received");
-    return -1;
+    return BPF_ERROR;
   }
-  err = bpf_core_read(&out_throughput->bytes_sent,
-                      sizeof(out_throughput->bytes_sent), &tcp->bytes_sent);
-  if (err) {
+  if (0 != bpf_core_read(&out_throughput->bytes_sent,
+                      sizeof(out_throughput->bytes_sent), &tcp->bytes_sent)) {
     debug_print("Error reading bytes_sent");
-    return -1;
+    return BPF_ERROR;
   }
 
-  return 0;
+  return BPF_SUCCESS;
 };
+
+static inline enum connection_role get_sock_role(struct sock* sock) {
+  // the max_ack_backlog holds the limit for the accept queue
+  // if it is a server, it will not be 0
+  int max_ack_backlog = 0;
+  if (0 != bpf_core_read(&max_ack_backlog, sizeof(max_ack_backlog),
+                &sock->sk_max_ack_backlog)) {
+    return CONNECTION_ROLE_UNKNOWN;
+  }
+
+  return max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT : CONNECTION_ROLE_SERVER;      
+}
 
 // probing the tcp_data_queue kernel function, and adding the connection
 // observed to the map.
 SEC("kprobe/tcp_data_queue")
 int handle_tcp_data_queue(struct pt_regs *ctx) {
-
   // first argument to tcp_data_queue is a struct sock*
   struct sock *sock = (struct sock *)PT_REGS_PARM1_CORE(ctx);
 
-  struct connection_identifier conn_id;
-  memset(&conn_id, 0, sizeof(conn_id));
-  struct connection_throughput_stats throughput;
-  memset(&throughput, 0, sizeof(throughput));
+  struct connection_identifier conn_id = {};
+  struct connection_throughput_stats throughput = {};
 
-  if (parse_sock_data(sock, &conn_id.tuple, &throughput) == -1) {
+  if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
     debug_print("error parsing sock");
-    return -1;
+    return BPF_ERROR;
   }
 
-  // skip unassigned sockets
-  if (conn_id.tuple.dst_port == 0 && conn_id.tuple.dst_ip == 0) {
-    return 0;
+  // skip unconnected sockets
+  if (conn_id.tuple.dst_port == 0 && conn_id.tuple.dst_ip == BPF_SUCCESS) {
+    return BPF_SUCCESS;
   }
 
   // fill the conn_id extra details from sock_info map entry, or create one
   struct sock_info *sock_info = bpf_map_lookup_elem(&sock_infos, &sock);
-  if (sock_info == 0) {
+  if (sock_info == NULL) {
     // first time we encounter this sock
     // check if server or client and insert to the maps
 
-    // the max_ack_backlog holds the limit for the accept queue
-    // if it is a server, it will not be 0
-
-    int max_ack_backlog = 0;
-    bpf_core_read(&max_ack_backlog, sizeof(max_ack_backlog),
-                  &sock->sk_max_ack_backlog);
+    enum connection_role role = get_sock_role(sock);
 
     struct sock_info info = {
         .pid = 0, // can't associate to pid anyway
-        .role = max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT
-                                     : CONNECTION_ROLE_SERVER,
+        .role = role,
         .is_active = true,
         .id = global_id_counter++,
     };
@@ -231,7 +231,7 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
 
   bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
-  return 0;
+  return BPF_SUCCESS;
 };
 
 SEC("tracepoint/sock/inet_sock_set_state")
@@ -247,8 +247,8 @@ int handle_sock_set_state(struct set_state_args *args) {
     struct connection_throughput_stats throughput;
     memset(&throughput, 0, sizeof(throughput));
 
-    if (parse_sock_data(args->skaddr, &conn_id.tuple, &throughput) == -1) {
-      return -1;
+    if (parse_sock_data(args->skaddr, &conn_id.tuple, &throughput) == BPF_ERROR) {
+      return BPF_ERROR;
     }
 
     struct sock_info info = {
@@ -287,5 +287,5 @@ int handle_sock_set_state(struct set_state_args *args) {
   }
   // TODO consider adding handler for TCP_FIN_WAIT
 
-  return 0;
+  return BPF_ERROR;
 }
