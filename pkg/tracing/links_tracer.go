@@ -3,6 +3,7 @@ package tracing
 import (
 	"log"
 
+	"github.com/cilium/ebpf"
 	"github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -82,26 +83,31 @@ func TracesPollingIteration(objs *bpfObjects, pastLinks map[NetworkLink]uint64, 
 
 	// delete connections marked to delete
 	for _, conn := range connectionsToDelete {
-		// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
-		var throughput ConnectionThroughputStats
-		err := objs.bpfMaps.Connections.Lookup(conn, &throughput)
-		if err != nil {
-			log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
-			failedConnectionDeletion.Inc()
-			continue
-		}
-		err = objs.bpfMaps.Connections.Delete(conn)
-		if err != nil {
-			log.Printf("Error deleting connection from map: %v", err)
-			failedConnectionDeletion.Inc()
-			continue
-		}
-		// if deletion is successful, add it to past links
-		pastLinks[reduceConnectionToLink(conn, resolver)] += throughput.BytesSent
+		link := reduceConnectionToLink(conn, resolver)
+		deleteAndStoreConnection(objs.bpfMaps.Connections, &conn, pastLinks, &link)
 	}
 
 	return pastLinks, currentLinks
 
+}
+
+func deleteAndStoreConnection(connections *ebpf.Map, conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64, link *NetworkLink) {
+	// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
+	var throughput ConnectionThroughputStats
+	err := connections.Lookup(conn, &throughput)
+	if err != nil {
+		log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
+		failedConnectionDeletion.Inc()
+		return
+	}
+	err = connections.Delete(conn)
+	if err != nil {
+		log.Printf("Error deleting connection from map: %v", err)
+		failedConnectionDeletion.Inc()
+		return
+	}
+	// if deletion is successful, add it to past links
+	pastLinks[*link] += throughput.BytesSent
 }
 
 // reduce a specific connection to a general link
