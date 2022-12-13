@@ -9,7 +9,14 @@
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-static u32 global_id_counter = 0;
+// static variables aren't always supported, so we use an array with one item
+struct bpf_map_def SEC("maps") global_id_counter = {
+      .type = BPF_MAP_TYPE_ARRAY,
+      .key_size = sizeof(char),
+      .value_size = sizeof(long),
+      .max_entries = 1,
+};
+
 
 // internal kernel-only map to hold state for each sock observed.
 struct bpf_map_def SEC("maps") sock_infos = {
@@ -33,6 +40,16 @@ struct bpf_map_def SEC("maps") connections = {
 
 // helper to convert short int from BE to LE
 static inline u16 be_to_le(__be16 be) { return (be >> 8) | (be << 8); }
+
+static inline u32 get_and_update_id() {
+  char index = 1;
+  long *id;
+  id = bpf_map_lookup_elem(&global_id_counter, &index);
+  if (id == NULL) {
+    return 0;
+  }
+  return __sync_fetch_and_add(id, 1);
+}
 
 // function for parsing the struct sock
 static inline int
@@ -140,7 +157,7 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
         .pid = 0, // can't associate to pid anyway
         .role = role,
         .is_active = true,
-        .id = global_id_counter++,
+        .id = get_and_update_id(),
     };
     bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
 
@@ -181,7 +198,7 @@ int handle_sock_set_state(struct set_state_args *args) {
         .pid = 0, // can't associate to process
         .role = CONNECTION_ROLE_SERVER,
         .is_active = true,
-        .id = global_id_counter++,
+        .id = get_and_update_id(),
     };
 
     bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
@@ -200,7 +217,7 @@ int handle_sock_set_state(struct set_state_args *args) {
         .pid = pid,
         .role = CONNECTION_ROLE_CLIENT,
         .is_active = true,
-        .id = global_id_counter++,
+        .id = get_and_update_id(),
     };
 
     bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
