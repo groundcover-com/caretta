@@ -10,9 +10,9 @@ import (
 )
 
 type TracerEbpfObjects struct {
-	Kprobe     *link.Link
-	Tracepoint *link.Link
-	BpfObjs    *bpfObjects
+	Kprobe     link.Link
+	Tracepoint link.Link
+	BpfObjs    bpfObjects
 }
 
 func LoadProbes() (TracerEbpfObjects, error) {
@@ -41,8 +41,30 @@ func LoadProbes() (TracerEbpfObjects, error) {
 	log.Printf("Tracepoint attached successfully")
 
 	return TracerEbpfObjects{
-		Kprobe:     &kp,
-		Tracepoint: &tp,
-		BpfObjs:    &objs,
+		Kprobe:     kp,
+		Tracepoint: tp,
+		BpfObjs:    objs,
 	}, nil
+}
+
+func (objs *TracerEbpfObjects) UnloadProbes() error {
+	// if any close operation fails, will continue to try closing the rest of the struct,
+	// and return the first error
+	var resultErr error
+	resultErr = nil
+
+	err := objs.Kprobe.Close()
+	if err != nil {
+		resultErr = err
+	}
+	err = objs.Tracepoint.Close()
+	if err != nil && resultErr == nil {
+		resultErr = err
+	}
+	err = objs.BpfObjs.Close()
+	if err != nil && resultErr == nil {
+		resultErr = err
+	}
+
+	return resultErr
 }

@@ -52,7 +52,8 @@ func (caretta *Caretta) Start() {
 	}
 	resolver := caretta_k8s.NewIPResolver(clientset)
 
-	caretta.tracer, err = tracing.NewTracer(resolver)
+	caretta.tracer = tracing.NewTracer(resolver)
+	err = caretta.tracer.LoadBpf()
 	if err != nil {
 		log.Fatalf("Couldn't load probes - %v", err)
 	}
@@ -87,6 +88,10 @@ func (caretta *Caretta) Start() {
 func (caretta *Caretta) Stop() {
 	log.Print("Stopping Caretta...")
 	caretta.stopSignal <- true
+	err := caretta.tracer.UnloadBpf()
+	if err != nil {
+		log.Printf("Error unloading bpf objects: %v", err)
+	}
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {

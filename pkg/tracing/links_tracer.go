@@ -34,16 +34,20 @@ type LinksTracer struct {
 	resolver    IPResolver
 }
 
-// initializes a LinksTracer object and loads probes into it
-func NewTracer(resolver IPResolver) (LinksTracer, error) {
+// initializes a LinksTracer object
+func NewTracer(resolver IPResolver) LinksTracer {
 	tracer := LinksTracer{resolver: resolver}
-	return tracer, tracer.LoadBpf()
+	return tracer
 }
 
 func (tracer *LinksTracer) LoadBpf() error {
 	var err error
 	tracer.ebpfObjects, err = LoadProbes()
 	return err
+}
+
+func (tracer *LinksTracer) UnloadBpf() error {
+	return tracer.ebpfObjects.UnloadProbes()
 }
 
 // a single polling from the eBPF maps
