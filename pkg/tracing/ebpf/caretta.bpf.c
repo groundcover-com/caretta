@@ -122,7 +122,6 @@ parse_sock_data(struct sock *sock, struct connection_tuple *out_tuple,
 
   // initialize variables. IP addresses and ports are read originally
   // big-endian, and we will convert the ports to little-endian.
-  int err = 0;
   __be16 src_port_be = 0;
   __be16 dst_port_be = 0;
 
