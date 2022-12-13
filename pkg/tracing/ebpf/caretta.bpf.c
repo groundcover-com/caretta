@@ -3,85 +3,13 @@
 #include <bpf_helpers.h>
 #include <bpf_tracing.h>
 #include <string.h>
+#include "ebpf_utils.h"
+#include "epbf_shared_types.h"
+#include "ebpf_internel_types.h"
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-#define MAX_CONNECTIONS 1000000
-
-#define BPF_SUCCESS 0
-#define BPF_ERROR -1
-
-#define DEBUG
-#ifdef DEBUG
-#define DEBUG_TEST 1
-#else
-#define DEBUG_TEST 0
-#endif
-
-#define debug_print(...)                                                       \
-  do {                                                                         \
-    if (DEBUG_TEST)                                                            \
-      bpf_printk(__VA_ARGS__);                                                 \
-  } while (0)
-
-// helper defs for inet_sock. These are defined in inet_sock.h, but not copied
-// automatically to vmlinux.h
-#define inet_daddr sk.__sk_common.skc_daddr
-#define inet_rcv_saddr sk.__sk_common.skc_rcv_saddr
-#define inet_dport sk.__sk_common.skc_dport
-#define inet_num sk.__sk_common.skc_num
-
-enum connection_role {
-  CONNECTION_ROLE_UNKNOWN = 0,
-  CONNECTION_ROLE_CLIENT,
-  CONNECTION_ROLE_SERVER,
-};
-
 static u32 global_id_counter = 0;
-
-// partial struct of args for tcp_set_state
-struct set_state_args {
-  u64 padding;
-  struct sock *skaddr;
-  u32 oldstate;
-  u32 newstate;
-  // more...
-};
-
-// describing two sides of a connection. constant for each connection.
-struct connection_tuple {
-  __be32 src_ip;
-  __be32 dst_ip;
-  u16 src_port;
-  u16 dst_port;
-};
-
-// all information needed to identify a specific connection.
-// due to socket reuses, each of the members (beside id) may change while
-// maintaing the others.
-struct connection_identifier {
-  u32 id; // uniquely generated id
-  u32 pid;
-  struct connection_tuple tuple;
-  enum connection_role role;
-};
-
-// dynamic information about the state of a connection.
-struct connection_throughput_stats {
-  u64 bytes_sent;
-  u64 bytes_received;
-  u64 is_active; // u64 because it will be padded anyway. should change whether
-                 // new members are added
-};
-
-// internal kernel-only struct to hold socket information which can't be parsed
-// from struct sock.
-struct sock_info {
-  u32 pid;
-  enum connection_role role;
-  u32 is_active;
-  u32 id;
-};
 
 // internal kernel-only map to hold state for each sock observed.
 struct bpf_map_def SEC("maps") sock_infos = {
