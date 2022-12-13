@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"errors"
 	"log"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -77,12 +78,12 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		}
 
 		// filter unroled connections (probably indicates a bug)
-		if conn.Role == UnknownConnectionRole {
+		link, err := tracer.reduceConnectionToLink(conn)
+		if conn.Role == UnknownConnectionRole || err != nil {
 			unroledCounter++
 			continue
 		}
 
-		link := tracer.reduceConnectionToLink(conn)
 		currentLinks[link] += throughput.BytesSent
 
 		if throughput.IsActive == 0 {
@@ -123,11 +124,16 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		return
 	}
 	// if deletion is successful, add it to past links
-	pastLinks[tracer.reduceConnectionToLink(*conn)] += throughput.BytesSent
+	link, err := tracer.reduceConnectionToLink(*conn)
+	if err != nil {
+		log.Printf("Error reducing connection to link when deleting: %v", err)
+		return
+	}
+	pastLinks[link] += throughput.BytesSent
 }
 
 // reduce a specific connection to a general link
-func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifier) NetworkLink {
+func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifier) (NetworkLink, error) {
 	var link NetworkLink
 	link.Role = connection.Role
 
@@ -145,8 +151,7 @@ func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifie
 		link.ServerHost = srcHost
 		link.ServerPort = connection.Tuple.SrcPort
 	} else {
-		// shouldn't get here
-		log.Fatal("Un-roled connection")
+		return NetworkLink{}, errors.New("connection's role is unknown")
 	}
-	return link
+	return link, nil
 }
