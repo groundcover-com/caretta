@@ -15,12 +15,11 @@ IMAGE=caretta-builder
 VERSION=1
 
 .PHONY: build
-build: binary_directory pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
+build: ${BIN_DIR} pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
 	go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
-.PHONY: run
-run: build
-	sudo ./bin/caretta
+${BIN_DIR}:
+	mkdir -p ${BIN_DIR}
 
 .PHONY: download_libbpf_headers
 download_libbpf_headers: 
@@ -42,10 +41,6 @@ ${BPF2GO_BINARY}_${BPF2GO_VERSION}:
 		${CILIUM_EBPF_DIRECTORY} 2>/dev/null
 	cd ${CILIUM_EBPF_DIRECTORY} && \
 		go build -o ${REPODIR}/${BPF2GO_BINARY}_${BPF2GO_VERSION} ./cmd/bpf2go
-
-.PHONY: binary_directory
-binary_directory:
-	mkdir -p ${BIN_DIR}
 
 .PHONY: build_builder_docker
 build_builder_docker:
