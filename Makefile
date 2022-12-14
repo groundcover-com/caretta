@@ -15,7 +15,7 @@ IMAGE=caretta-builder
 VERSION=1
 
 .PHONY: build
-build: binary_directory generate_ebpf_in_docker cmd/caretta/caretta.go
+build: binary_directory pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
 	go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 .PHONY: run
@@ -59,3 +59,6 @@ generate_ebpf_in_docker: build_builder_docker
 		--env HOME="/tmp/" \
 		"${IMAGE}:${VERSION}" \
 		${MAKE} generate_ebpf
+
+pkg/tracing/bpf_bpfel%.go: pkg/tracing/ebpf/caretta.bpf.c
+	$(MAKE) generate_ebpf_in_docker
