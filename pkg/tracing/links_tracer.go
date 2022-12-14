@@ -1,8 +1,10 @@
 package tracing
 
 import (
+	"encoding/binary"
 	"errors"
 	"log"
+	"net"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -72,7 +74,7 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		// filter unnecessary connection
 
 		// skip loopback connections
-		if conn.Tuple.SrcIp == conn.Tuple.DstIp {
+		if conn.Tuple.SrcIp == conn.Tuple.DstIp && isAddressLoopback(conn.Tuple.DstIp) {
 			loopbackCounter++
 			continue
 		}
@@ -154,4 +156,10 @@ func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifie
 		return NetworkLink{}, errors.New("connection's role is unknown")
 	}
 	return link, nil
+}
+
+func isAddressLoopback(ip uint32) bool {
+	ipAddr := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ipAddr, ip)
+	return ipAddr.IsLoopback()
 }
