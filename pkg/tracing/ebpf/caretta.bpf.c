@@ -41,7 +41,7 @@ struct bpf_map_def SEC("maps") connections = {
 static inline u16 be_to_le(__be16 be) { return (be >> 8) | (be << 8); }
 
 static inline u32 get_and_update_id() {
-  char index = 1;
+  char index = 0;
   long *id;
   id = bpf_map_lookup_elem(&global_id_counter, &index);
   if (id == NULL) {
