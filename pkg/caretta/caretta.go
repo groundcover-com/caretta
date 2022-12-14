@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
@@ -93,8 +94,8 @@ func (caretta *Caretta) Stop() {
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {
-	clientName, clientNamespace := caretta_k8s.SplitNamespace(link.ClientHost)
-	serverName, serverNamespace := caretta_k8s.SplitNamespace(link.ServerHost)
+	clientName, clientNamespace := splitNamespace(link.ClientHost)
+	serverName, serverNamespace := splitNamespace(link.ServerHost)
 	linksMetrics.With(prometheus.Labels{
 		"LinkId":          strconv.Itoa(int(fnvHash(link.ClientHost+link.ServerHost) + link.Role)),
 		"ClientId":        strconv.Itoa(int(fnvHash(link.ClientHost))),
@@ -126,4 +127,17 @@ func fnvHash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
+}
+
+// gets a hostname (probably in the pattern name:namespace) and split it to name and namespace
+// basically a wrapped Split function to handle some edge cases
+func splitNamespace(fullname string) (string, string) {
+	if !strings.Contains(fullname, ":") {
+		return fullname, ""
+	}
+	s := strings.Split(fullname, ":")
+	if len(s) > 1 {
+		return s[0], s[1]
+	}
+	return fullname, ""
 }
