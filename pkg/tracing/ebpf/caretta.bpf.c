@@ -11,8 +11,8 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 // static variables aren't always supported, so we use an array with one item
 struct bpf_map_def SEC("maps") global_id_counter = {
       .type = BPF_MAP_TYPE_ARRAY,
-      .key_size = sizeof(char),
-      .value_size = sizeof(long),
+      .key_size = sizeof(u32),
+      .value_size = sizeof(u32),
       .max_entries = 1,
 };
 
@@ -41,13 +41,14 @@ struct bpf_map_def SEC("maps") connections = {
 static inline u16 be_to_le(__be16 be) { return (be >> 8) | (be << 8); }
 
 static inline u32 get_and_update_id() {
-  char index = 0;
-  long *id;
+  u32 index = 0;
+  u32 *id;
   id = bpf_map_lookup_elem(&global_id_counter, &index);
   if (id == NULL) {
     return 0;
   }
-  return __sync_fetch_and_add(id, 1);
+  __sync_fetch_and_add(id, 1);
+  return *id;
 }
 
 // function for parsing the struct sock
