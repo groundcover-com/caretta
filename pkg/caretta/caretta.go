@@ -44,8 +44,6 @@ func NewCaretta() *Caretta {
 func (caretta *Caretta) Start() {
 	metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
 
-	var err error
-
 	clientset, err := caretta.getClientSet()
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
@@ -98,11 +96,11 @@ func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64)
 	clientName, clientNamespace := caretta_k8s.SplitNamespace(link.ClientHost)
 	serverName, serverNamespace := caretta_k8s.SplitNamespace(link.ServerHost)
 	linksMetrics.With(prometheus.Labels{
-		"LinkId":          strconv.Itoa(int(hash(link.ClientHost+link.ServerHost) + link.Role)),
-		"ClientId":        strconv.Itoa(int(hash(link.ClientHost))),
+		"LinkId":          strconv.Itoa(int(fnvHash(link.ClientHost+link.ServerHost) + link.Role)),
+		"ClientId":        strconv.Itoa(int(fnvHash(link.ClientHost))),
 		"ClientName":      clientName,
 		"ClientNamespace": clientNamespace,
-		"ServerId":        strconv.Itoa(int(hash(link.ServerHost))),
+		"ServerId":        strconv.Itoa(int(fnvHash(link.ServerHost))),
 		"ServerName":      serverName,
 		"ServerNamespace": serverNamespace,
 		"ServerPort":      strconv.Itoa(int(link.ServerPort)),
@@ -123,8 +121,8 @@ func (caretta *Caretta) getClientSet() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-// simple hash function from string to uint32
-func hash(s string) uint32 {
+// simple fnvHash function from string to uint32
+func fnvHash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
