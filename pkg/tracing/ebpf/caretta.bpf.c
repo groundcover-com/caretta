@@ -2,7 +2,6 @@
 #include <bpf_core_read.h>
 #include <bpf_helpers.h>
 #include <bpf_tracing.h>
-#include <string.h>
 #include "ebpf_utils.h"
 #include "epbf_shared_types.h"
 #include "ebpf_internel_types.h"
@@ -185,10 +184,8 @@ int handle_sock_set_state(struct set_state_args *args) {
   // handle according to the new state
   if (args->newstate == TCP_SYN_RECV) {
     // this is a server getting syn after listen
-    struct connection_identifier conn_id;
-    memset(&conn_id, 0, sizeof(conn_id));
-    struct connection_throughput_stats throughput;
-    memset(&throughput, 0, sizeof(throughput));
+    struct connection_identifier conn_id = {};
+    struct connection_throughput_stats throughput = {};
 
     if (parse_sock_data(args->skaddr, &conn_id.tuple, &throughput) == BPF_ERROR) {
       return BPF_ERROR;

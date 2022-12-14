@@ -8,7 +8,7 @@ UIDGID := $(shell stat -c '%u:%g' ${REPODIR})
 PROJECT_DIRNAME := $(shell basename ${REPODIR})
 CILIUM_EBPF_DIRECTORY := /tmp/cilium-ebpf
 BUILD_SCRIPTS_DIRECTORY=scripts/build
-BPF_CLANG := clang-12
+BPF_CLANG := clang-14
 INCLUDE_C_FLAGS := -I/tmp/caretta_extra/libbpf_headers -I/tmp/${PROJECT_DIRNAME}/
 BPF_CFLAGS := -O2 -g -Wall -Werror -fdebug-prefix-map=/ebpf=. ${INCLUDE_C_FLAGS}
 IMAGE=caretta-builder
