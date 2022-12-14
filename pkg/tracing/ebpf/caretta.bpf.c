@@ -154,7 +154,11 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
     conn_id.pid = sock_info->pid;
     conn_id.id = sock_info->id;
     conn_id.role = sock_info->role;
-    throughput.is_active = sock_info->is_active; // maybe set it to true?
+    if (!sock_info->is_active) {
+      debug_print("inactive sock in tcp_data_queue");
+      return -1;
+    }
+    throughput.is_active = sock_info->is_active; 
   }
 
   bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
