@@ -16,7 +16,7 @@ VERSION=1
 
 .PHONY: build
 build: ${BIN_DIR} pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
-	go build -o ${BINARY_PATH} cmd/caretta/caretta.go
+	CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 ${BIN_DIR}:
 	mkdir -p ${BIN_DIR}

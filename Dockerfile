@@ -1,4 +1,4 @@
-FROM golang:1.19
+FROM alpine:3.17
 
 WORKDIR /app
 COPY ./bin/caretta ./
