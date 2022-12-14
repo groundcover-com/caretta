@@ -150,33 +150,48 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
     conn_id.role = info.role;
     throughput.is_active = true;
 
-  } else {
-    conn_id.pid = sock_info->pid;
-    conn_id.id = sock_info->id;
-    conn_id.role = sock_info->role;
-    if (!sock_info->is_active) {
-      debug_print("inactive sock in tcp_data_queue");
-      return -1;
-    }
-    throughput.is_active = sock_info->is_active; 
-  }
+    bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
+    return BPF_SUCCESS;
+
+  } 
+
+  conn_id.pid = sock_info->pid;
+  conn_id.id = sock_info->id;
+  conn_id.role = sock_info->role;
+  if (!sock_info->is_active) {
+    debug_print("inactive sock in tcp_data_queue");
+    return -1;
+  }
+  throughput.is_active = sock_info->is_active; 
+  
   bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
   return BPF_SUCCESS;
 };
 
-SEC("tracepoint/sock/inet_sock_set_state")
-int handle_sock_set_state(struct set_state_args *args) {
-  struct sock *sock = (struct sock *)args->skaddr;
+int handle_set_tcp_syn_sent(struct sock* sock) {
+  // start of a client session
+  u32 pid = bpf_get_current_pid_tgid() >> 32;
 
-  // handle according to the new state
-  if (args->newstate == TCP_SYN_RECV) {
-    // this is a server getting syn after listen
+  struct sock_info info = {
+      .pid = pid,
+      .role = CONNECTION_ROLE_CLIENT,
+      .is_active = true,
+      .id = get_unique_id(),
+  };
+
+  bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
+
+  return BPF_SUCCESS;
+}
+
+int handle_set_tcp_syn_recv(struct sock* sock) {
+  // this is a server getting syn after listen
     struct connection_identifier conn_id = {};
     struct connection_throughput_stats throughput = {};
 
-    if (parse_sock_data(args->skaddr, &conn_id.tuple, &throughput) == BPF_ERROR) {
+    if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
       return BPF_ERROR;
     }
 
@@ -195,26 +210,35 @@ int handle_sock_set_state(struct set_state_args *args) {
 
     bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
-  } else if (args->newstate == TCP_SYN_SENT) {
-    // start of a client session
-    u32 pid = bpf_get_current_pid_tgid() >> 32;
+    return BPF_SUCCESS;
+}
 
-    struct sock_info info = {
-        .pid = pid,
-        .role = CONNECTION_ROLE_CLIENT,
-        .is_active = true,
-        .id = get_unique_id(),
-    };
-
-    bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
-  } else if (args->newstate == TCP_CLOSE || args->newstate == TCP_CLOSE_WAIT) {
-    // mark as inactive
-    struct sock_info *info = bpf_map_lookup_elem(&sock_infos, &sock);
-    if (info != 0) {
-      info->is_active = false;
-    }
+int handle_set_tcp_close(struct sock* sock) {
+  // mark as inactive
+  struct sock_info *info = bpf_map_lookup_elem(&sock_infos, &sock);
+  if (info != NULL) {
+    info->is_active = false;
   }
-  // TODO consider adding handler for TCP_FIN_WAIT
 
-  return BPF_ERROR;
+  return BPF_SUCCESS;
+}
+
+SEC("tracepoint/sock/inet_sock_set_state")
+int handle_sock_set_state(struct set_state_args *args) {
+  struct sock *sock = (struct sock *)args->skaddr;
+
+  switch(args->newstate) {
+    case TCP_SYN_RECV:
+    return handle_set_tcp_syn_recv(sock) == BPF_ERROR;
+    break;
+    case TCP_SYN_SENT:
+    return handle_set_tcp_syn_sent(sock) == BPF_ERROR;
+    break;
+    case TCP_CLOSE:
+    case TCP_CLOSE_WAIT:
+    return handle_set_tcp_close(sock);
+    break;
+  }
+
+  return BPF_SUCCESS;
 }
