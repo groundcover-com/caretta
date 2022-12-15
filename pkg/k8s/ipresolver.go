@@ -345,6 +345,7 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 	resolver.snapshot.Services.Range(func(key any, val any) bool {
 		service, ok := val.(v1.Service)
 		if !ok {
+			log.Printf("Type confusion in services map")
 			return true // continue
 		}
 		// services has (potentially multiple) ClusterIP
@@ -362,6 +363,7 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 	resolver.snapshot.Pods.Range(func(key, value any) bool {
 		pod, ok := value.(v1.Pod)
 		if !ok {
+			log.Printf("Type confusion in pods map")
 			return true // continue
 		}
 		name := resolver.resolvePodName(&pod)
@@ -379,6 +381,7 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 	resolver.snapshot.Nodes.Range(func(key any, value any) bool {
 		node, ok := value.(v1.Node)
 		if !ok {
+			log.Printf("Type confusion in nodes map")
 			return true // continue
 		}
 		for _, nodeAddress := range node.Status.Addresses {
