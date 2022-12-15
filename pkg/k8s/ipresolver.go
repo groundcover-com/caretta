@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"net"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/watch"
@@ -53,12 +52,6 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 			return valString
 		}
 		log.Printf("type confusion in ipsMap")
-	}
-	hosts, err := net.LookupAddr(ip)
-	if err == nil && len(hosts) > 0 && hosts[0] != "" {
-		result := hosts[0] + ":EXTERNAL"
-		resolver.ipsMap.Store(ip, result)
-		return result
 	}
 	return ip
 }
