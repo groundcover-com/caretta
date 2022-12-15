@@ -3,7 +3,7 @@ kind: Service
 metadata:
   annotations:
     app: caretta-prom
-  name: caretta-prom
+  name: prometheus
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
