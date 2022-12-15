@@ -63,6 +63,8 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 	unroledCounter := 0
 	loopbackCounter := 0
 
+	tracer.resolver.Update()
+
 	currentLinks := make(map[NetworkLink]uint64)
 	var connectionsToDelete []ConnectionIdentifier
 

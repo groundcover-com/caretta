@@ -57,6 +57,11 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 }
 
 func (resolver *K8sIPResolver) StartWatching() error {
+
+	// get initial state
+	resolver.syncUpdateClusterSnapshot()
+	resolver.updateIpMapping()
+
 	// register watchers
 	podsWatcher, err := resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -245,8 +250,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 		}
 	}()
 
-	// get initial state
-	// to avoid races, this is done after registering the watchers
+	// to avoid races, this is done again after registering the watchers
 	resolver.syncUpdateClusterSnapshot()
 	resolver.updateIpMapping()
 
@@ -255,6 +259,10 @@ func (resolver *K8sIPResolver) StartWatching() error {
 
 func (resolver *K8sIPResolver) StopWatching() {
 	resolver.stopSignal <- true
+}
+
+func (resolver *K8sIPResolver) Update() {
+	resolver.updateIpMapping()
 }
 
 // iterate the API for initial coverage of the cluster's state
