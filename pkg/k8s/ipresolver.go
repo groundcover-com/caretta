@@ -46,12 +46,6 @@ func NewK8sIPResolver(clientset *kubernetes.Clientset) *K8sIPResolver {
 	}
 }
 
-// update the resolver's cache to the current cluster's state
-func (resolver *K8sIPResolver) Update() error {
-	resolver.updateIpMapping()
-	return nil
-}
-
 // resolve the given IP from the resolver's cache
 // if not available, return the IP itself.
 func (resolver *K8sIPResolver) ResolveIP(ip string) string {
@@ -70,6 +64,7 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 func (resolver *K8sIPResolver) StartWatching() error {
 	// get initial state
 	resolver.syncUpdateClusterSnapshot()
+	resolver.updateIpMapping()
 
 	// register watchers
 	podsWatcher, err := resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
