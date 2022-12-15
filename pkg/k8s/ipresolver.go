@@ -33,7 +33,7 @@ type ipMapping map[string]string
 type K8sIPResolver struct {
 	clientset  *kubernetes.Clientset
 	snapshot   clusterSnapshot
-	ipsMap     ipMapping
+	ipsMap     sync.Map
 	stopSignal chan bool
 }
 
@@ -41,7 +41,7 @@ func NewK8sIPResolver(clientset *kubernetes.Clientset) *K8sIPResolver {
 	return &K8sIPResolver{
 		clientset:  clientset,
 		snapshot:   clusterSnapshot{},
-		ipsMap:     make(ipMapping),
+		ipsMap:     sync.Map{},
 		stopSignal: make(chan bool),
 	}
 }
@@ -49,13 +49,17 @@ func NewK8sIPResolver(clientset *kubernetes.Clientset) *K8sIPResolver {
 // resolve the given IP from the resolver's cache
 // if not available, return the IP itself.
 func (resolver *K8sIPResolver) ResolveIP(ip string) string {
-	if val, ok := resolver.ipsMap[ip]; ok {
-		return val
+	if val, ok := resolver.ipsMap.Load(ip); ok {
+		valString, ok := val.(string)
+		if ok {
+			return valString
+		}
+		log.Printf("type confusion in ipsMap")
 	}
 	hosts, err := net.LookupAddr(ip)
 	if err == nil && len(hosts) > 0 && hosts[0] != "" {
 		result := hosts[0] + ":EXTERNAL"
-		resolver.ipsMap[ip] = result
+		resolver.ipsMap.Store(ip, result)
 		return result
 	}
 	return ip
@@ -127,7 +131,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				resolver.snapshot.Pods.Store(pod.UID, pod)
 				name := resolver.resolvePodName(pod)
 				for _, podIp := range pod.Status.PodIPs {
-					resolver.ipsMap[podIp.IP] = name
+					resolver.ipsMap.Store(podIp.IP, name)
 				}
 			case watch.Deleted:
 				if val, ok := podEvent.Object.(*v1.Pod); ok {
@@ -143,7 +147,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				}
 				resolver.snapshot.Nodes.Store(node.UID, node)
 				for _, nodeAddress := range node.Status.Addresses {
-					resolver.ipsMap[nodeAddress.Address] = string(nodeAddress.Type) + "/" + node.Name + ":INTERNAL"
+					resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
 				}
 			case watch.Deleted:
 				if val, ok := nodeEvent.Object.(*v1.Node); ok {
@@ -212,7 +216,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				// TODO maybe try to match service to workload
 				for _, clusterIp := range service.Spec.ClusterIPs {
 					if clusterIp != "None" {
-						resolver.ipsMap[clusterIp] = name
+						resolver.ipsMap.Store(clusterIp, name)
 					}
 				}
 			case watch.Deleted:
@@ -335,9 +339,6 @@ func (resolver *K8sIPResolver) syncUpdateClusterSnapshot() error {
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
 func (resolver *K8sIPResolver) updateIpMapping() {
-	// to avoid long-term errors, we don't save hits for long
-	resolver.ipsMap = make(ipMapping)
-
 	// because IP collisions may occur and lead to overwritings in the map, the order is important
 	// we go from less "favorable" to more "favorable" -
 	// services -> running pods -> nodes
@@ -354,7 +355,7 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 		// TODO maybe try to match service to workload
 		for _, clusterIp := range service.Spec.ClusterIPs {
 			if clusterIp != "None" {
-				resolver.ipsMap[clusterIp] = name
+				resolver.ipsMap.Store(clusterIp, name)
 			}
 		}
 		return true
@@ -370,9 +371,9 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 		podPhase := pod.Status.Phase
 		for _, podIp := range pod.Status.PodIPs {
 			// if ip is already in the map, override only if current pod is running
-			_, ok := resolver.ipsMap[podIp.IP]
+			_, ok := resolver.ipsMap.Load(podIp.IP)
 			if !ok || podPhase == v1.PodRunning {
-				resolver.ipsMap[podIp.IP] = name
+				resolver.ipsMap.Store(podIp.IP, name)
 			}
 		}
 		return true
@@ -385,13 +386,13 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 			return true // continue
 		}
 		for _, nodeAddress := range node.Status.Addresses {
-			resolver.ipsMap[nodeAddress.Address] = string(nodeAddress.Type) + "/" + node.Name + ":INTERNAL"
+			resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
 		}
 		return true
 	})
 
 	// localhost
-	resolver.ipsMap["0.0.0.0"] = "localhost"
+	resolver.ipsMap.Store("0.0.0.0", "localhost")
 }
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
