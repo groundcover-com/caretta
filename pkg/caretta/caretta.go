@@ -54,6 +54,9 @@ func (caretta *Caretta) Start() {
 		log.Fatalf("Error watching cluster's state: %v", err)
 	}
 
+	// wait for resolver to populate
+	time.Sleep(10 * time.Second)
+
 	caretta.tracer = tracing.NewTracer(resolver)
 	err = caretta.tracer.Start()
 	if err != nil {
