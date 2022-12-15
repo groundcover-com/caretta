@@ -116,7 +116,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 					if !ok {
 						continue
 					}
-					resolver.snapshot.Pods.Store(pod.UID, pod)
+					resolver.snapshot.Pods.Store(pod.UID, *pod)
 					name := resolver.resolvePodName(pod)
 					for _, podIp := range pod.Status.PodIPs {
 						resolver.ipsMap.Store(podIp.IP, name)
@@ -133,7 +133,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 					if !ok {
 						continue
 					}
-					resolver.snapshot.Nodes.Store(node.UID, node)
+					resolver.snapshot.Nodes.Store(node.UID, *node)
 					for _, nodeAddress := range node.Status.Addresses {
 						resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
 					}
@@ -146,7 +146,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				switch replicasetsEvent.Type {
 				case watch.Added:
 					if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
-						resolver.snapshot.ReplicaSets.Store(val.UID, val)
+						resolver.snapshot.ReplicaSets.Store(val.UID, *val)
 					}
 				case watch.Deleted:
 					if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
@@ -157,7 +157,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				switch daemonsetsEvent.Type {
 				case watch.Added:
 					if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
-						resolver.snapshot.DaemonSets.Store(val.UID, val)
+						resolver.snapshot.DaemonSets.Store(val.UID, *val)
 					}
 				case watch.Deleted:
 					if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
@@ -169,7 +169,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				switch statefulsetsEvent.Type {
 				case watch.Added:
 					if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
-						resolver.snapshot.StatefulSets.Store(val.UID, val)
+						resolver.snapshot.StatefulSets.Store(val.UID, *val)
 					}
 				case watch.Deleted:
 					if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
@@ -181,7 +181,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				switch jobsEvent.Type {
 				case watch.Added:
 					if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
-						resolver.snapshot.Jobs.Store(val.UID, val)
+						resolver.snapshot.Jobs.Store(val.UID, *val)
 					}
 				case watch.Deleted:
 					if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
@@ -196,7 +196,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 					if !ok {
 						continue
 					}
-					resolver.snapshot.Services.Store(service.UID, service)
+					resolver.snapshot.Services.Store(service.UID, *service)
 
 					// services has (potentially multiple) ClusterIP
 					name := service.Name + ":" + service.Namespace
@@ -219,7 +219,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				switch deploymentsEvent.Type {
 				case watch.Added:
 					if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
-						resolver.snapshot.Deployments.Store(val.UID, val)
+						resolver.snapshot.Deployments.Store(val.UID, *val)
 					}
 				case watch.Deleted:
 					if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
@@ -231,7 +231,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				switch cronjobsEvent.Type {
 				case watch.Added:
 					if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
-						resolver.snapshot.CronJobs.Store(val.UID, val)
+						resolver.snapshot.CronJobs.Store(val.UID, *val)
 					}
 				case watch.Deleted:
 					if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
