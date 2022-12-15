@@ -116,9 +116,11 @@ func (resolver *K8sIPResolver) StartWatching() error {
 					if !ok {
 						continue
 					}
+					log.Printf("New pod %v", pod.Name)
 					resolver.snapshot.Pods.Store(pod.UID, *pod)
 					name := resolver.resolvePodName(pod)
 					for _, podIp := range pod.Status.PodIPs {
+						log.Printf("%v : %v", pod.Name, podIp.IP)
 						resolver.ipsMap.Store(podIp.IP, name)
 					}
 				case watch.Deleted:
@@ -196,6 +198,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 					if !ok {
 						continue
 					}
+					log.Printf("New service %v", service.Name)
 					resolver.snapshot.Services.Store(service.UID, *service)
 
 					// services has (potentially multiple) ClusterIP
