@@ -17,7 +17,6 @@ type IPResolver interface {
 	ResolveIP(string) string
 	StartWatching() error
 	StopWatching()
-	Update()
 }
 
 func (ip IP) String() string {

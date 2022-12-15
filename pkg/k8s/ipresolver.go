@@ -128,6 +128,18 @@ func (resolver *K8sIPResolver) StartWatching() error {
 						log.Printf("%v : %v", pod.Name, podIp.IP)
 						resolver.ipsMap.Store(podIp.IP, name)
 					}
+				case watch.Modified:
+					pod, ok := podEvent.Object.(*v1.Pod)
+					if !ok {
+						continue
+					}
+					log.Printf("modified pod %v", pod.Name)
+					resolver.snapshot.Pods.Store(pod.UID, *pod)
+					name := resolver.resolvePodName(pod)
+					for _, podIp := range pod.Status.PodIPs {
+						log.Printf("%v : %v", pod.Name, podIp.IP)
+						resolver.ipsMap.Store(podIp.IP, name)
+					}
 				case watch.Deleted:
 					if val, ok := podEvent.Object.(*v1.Pod); ok {
 						resolver.snapshot.Pods.Delete(val)
@@ -259,10 +271,6 @@ func (resolver *K8sIPResolver) StartWatching() error {
 
 func (resolver *K8sIPResolver) StopWatching() {
 	resolver.stopSignal <- true
-}
-
-func (resolver *K8sIPResolver) Update() {
-	resolver.updateIpMapping()
 }
 
 // iterate the API for initial coverage of the cluster's state
