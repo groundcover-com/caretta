@@ -28,8 +28,6 @@ type clusterSnapshot struct {
 	CronJobs     sync.Map // map[types.UID]batchv1.CronJob
 }
 
-type ipMapping map[string]string
-
 type K8sIPResolver struct {
 	clientset  *kubernetes.Clientset
 	snapshot   clusterSnapshot
@@ -216,7 +214,10 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				// TODO maybe try to match service to workload
 				for _, clusterIp := range service.Spec.ClusterIPs {
 					if clusterIp != "None" {
-						resolver.ipsMap.Store(clusterIp, name)
+						_, ok := resolver.ipsMap.Load(clusterIp)
+						if !ok {
+							resolver.ipsMap.Store(clusterIp, name)
+						}
 					}
 				}
 			case watch.Deleted:
