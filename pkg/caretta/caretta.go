@@ -49,10 +49,13 @@ func (caretta *Caretta) Start() {
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
-	resolver := caretta_k8s.NewIPResolver(clientset)
+	resolver := caretta_k8s.NewK8sIPResolver(clientset)
+	if resolver.StartWatching() != nil {
+		log.Fatalf("Error watching cluster's state: %v", err)
+	}
 
 	caretta.tracer = tracing.NewTracer(resolver)
-	err = caretta.tracer.LoadBpf()
+	err = caretta.tracer.Start()
 	if err != nil {
 		log.Fatalf("Couldn't load probes - %v", err)
 	}
@@ -69,7 +72,6 @@ func (caretta *Caretta) Start() {
 			case <-pollingTicker.C:
 				var links map[tracing.NetworkLink]uint64
 
-				err := resolver.Update()
 				if err != nil {
 					log.Printf("Error updating snapshot of cluster state, skipping iteration")
 					continue
@@ -87,7 +89,7 @@ func (caretta *Caretta) Start() {
 func (caretta *Caretta) Stop() {
 	log.Print("Stopping Caretta...")
 	caretta.stopSignal <- true
-	err := caretta.tracer.UnloadBpf()
+	err := caretta.tracer.Stop()
 	if err != nil {
 		log.Printf("Error unloading bpf objects: %v", err)
 	}

@@ -16,6 +16,8 @@ type IP uint32
 type IPResolver interface {
 	Update() error
 	ResolveIP(string) string
+	StartWatching() error
+	StopWatching()
 }
 
 func (ip IP) String() string {

@@ -43,13 +43,14 @@ func NewTracer(resolver IPResolver) LinksTracer {
 	return tracer
 }
 
-func (tracer *LinksTracer) LoadBpf() error {
+func (tracer *LinksTracer) Start() error {
 	var err error
 	tracer.ebpfObjects, err = LoadProbes()
 	return err
 }
 
-func (tracer *LinksTracer) UnloadBpf() error {
+func (tracer *LinksTracer) Stop() error {
+	tracer.resolver.StopWatching()
 	return tracer.ebpfObjects.UnloadProbes()
 }
 
