@@ -1,8 +1,10 @@
 package caretta
 
 import (
+	"context"
 	"hash/fnv"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -32,8 +34,9 @@ var (
 )
 
 type Caretta struct {
-	stopSignal chan bool
-	tracer     tracing.LinksTracer
+	stopSignal    chan bool
+	tracer        tracing.LinksTracer
+	metricsServer *http.Server
 }
 
 func NewCaretta() *Caretta {
@@ -43,7 +46,7 @@ func NewCaretta() *Caretta {
 }
 
 func (caretta *Caretta) Start() {
-	metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
+	caretta.metricsServer = metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
 
 	clientset, err := caretta.getClientSet()
 	if err != nil {
@@ -96,6 +99,7 @@ func (caretta *Caretta) Stop() {
 	if err != nil {
 		log.Printf("Error unloading bpf objects: %v", err)
 	}
+	caretta.metricsServer.Shutdown(context.Background())
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {

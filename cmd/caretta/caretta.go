@@ -19,5 +19,4 @@ func main() {
 	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-osSignal
 	caretta.Stop()
-
 }
