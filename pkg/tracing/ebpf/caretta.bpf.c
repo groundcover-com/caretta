@@ -228,16 +228,19 @@ int handle_sock_set_state(struct set_state_args *args) {
   struct sock *sock = (struct sock *)args->skaddr;
 
   switch(args->newstate) {
-    case TCP_SYN_RECV:
-    return handle_set_tcp_syn_recv(sock) == BPF_ERROR;
-    break;
-    case TCP_SYN_SENT:
-    return handle_set_tcp_syn_sent(sock) == BPF_ERROR;
-    break;
-    case TCP_CLOSE:
-    case TCP_CLOSE_WAIT:
-    return handle_set_tcp_close(sock);
-    break;
+    case TCP_SYN_RECV: {
+      return handle_set_tcp_syn_recv(sock) == BPF_ERROR;
+      break;
+    }
+    case TCP_SYN_SENT: {
+      return handle_set_tcp_syn_sent(sock) == BPF_ERROR;
+      break;
+    }
+    case TCP_CLOSE: // fallthrough
+    case TCP_CLOSE_WAIT: {
+      return handle_set_tcp_close(sock);
+      break;
+    }
   }
 
   return BPF_SUCCESS;
