@@ -101,7 +101,7 @@ func (caretta *Caretta) Stop() {
 	}
 	err = caretta.metricsServer.Shutdown(context.Background())
 	if err != nil {
-		log.Printf("Error shutting Prometheus server down")
+		log.Printf("Error shutting Prometheus server down: %v", err)
 	}
 
 }

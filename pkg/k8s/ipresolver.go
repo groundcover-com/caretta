@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 
@@ -57,9 +58,6 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 }
 
 func (resolver *K8sIPResolver) StartWatching() error {
-	// get initial state
-	resolver.getResolvedClusterSnapshot()
-
 	// register watchers
 	podsWatcher, err := resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -134,8 +132,11 @@ func (resolver *K8sIPResolver) StartWatching() error {
 		}
 	}()
 
-	// to avoid races, this is done again after registering the watchers
-	resolver.getResolvedClusterSnapshot()
+	// get initial state
+	err = resolver.getResolvedClusterSnapshot()
+	if err != nil {
+		return fmt.Errorf("error retrieving cluster's initial state: %v", err)
+	}
 
 	return nil
 }
@@ -297,11 +298,12 @@ func (resolver *K8sIPResolver) handleCronJobsWatchEvent(cronjobsEvent *watch.Eve
 	}
 }
 
-func (resolver *K8sIPResolver) getResolvedClusterSnapshot() {
+func (resolver *K8sIPResolver) getResolvedClusterSnapshot() error {
 	err := resolver.getFullClusterSnapshot()
 	if err != nil {
 		resolver.updateIpMapping()
 	}
+	return err
 }
 
 // iterate the API for initial coverage of the cluster's state
