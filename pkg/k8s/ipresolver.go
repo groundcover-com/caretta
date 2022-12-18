@@ -109,6 +109,15 @@ func (resolver *K8sIPResolver) StartWatching() error {
 		for {
 			select {
 			case <-resolver.stopSignal:
+				podsWatcher.Stop()
+				nodesWatcher.Stop()
+				replicasetsWatcher.Stop()
+				daemonsetsWatcher.Stop()
+				statefulsetsWatcher.Stop()
+				jobsWatcher.Stop()
+				servicesWatcher.Stop()
+				deploymentsWatcher.Stop()
+				cronJobsWatcher.Stop()
 				return
 			case podEvent := <-podsWatcher.ResultChan():
 				resolver.handlePodWatchEvent(&podEvent)
@@ -135,6 +144,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 	// get initial state
 	err = resolver.getResolvedClusterSnapshot()
 	if err != nil {
+		resolver.StopWatching()
 		return fmt.Errorf("error retrieving cluster's initial state: %v", err)
 	}
 
