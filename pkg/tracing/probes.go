@@ -9,7 +9,6 @@ import (
 	"github.com/cilium/ebpf/link"
 )
 
-
 type TracerEbpfObjects struct {
 	Kprobe     link.Link
 	Tracepoint link.Link
