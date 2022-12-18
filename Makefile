@@ -44,7 +44,7 @@ ${BPF2GO_BINARY}_${BPF2GO_VERSION}:
 
 .PHONY: build_builder_docker
 build_builder_docker:
-	docker build --tag ${IMAGE}:${VERSION} scripts/build
+	docker build --tag ${IMAGE}:${VERSION} -f ebpf-builder-with-bpftool.Dockerfile .
 
 .PHONY: generate_ebpf_in_docker
 generate_ebpf_in_docker: build_builder_docker
