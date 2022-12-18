@@ -57,10 +57,8 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 }
 
 func (resolver *K8sIPResolver) StartWatching() error {
-
 	// get initial state
-	resolver.syncUpdateClusterSnapshot()
-	resolver.updateIpMapping()
+	resolver.getResolvedClusterSnapshot()
 
 	// register watchers
 	podsWatcher, err := resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
@@ -115,151 +113,29 @@ func (resolver *K8sIPResolver) StartWatching() error {
 			case <-resolver.stopSignal:
 				return
 			case podEvent := <-podsWatcher.ResultChan():
-				switch podEvent.Type {
-				case watch.Added:
-					pod, ok := podEvent.Object.(*v1.Pod)
-					if !ok {
-						continue
-					}
-					resolver.snapshot.Pods.Store(pod.UID, *pod)
-					name := resolver.resolvePodName(pod)
-					for _, podIp := range pod.Status.PodIPs {
-						resolver.ipsMap.Store(podIp.IP, name)
-					}
-				case watch.Modified:
-					pod, ok := podEvent.Object.(*v1.Pod)
-					if !ok {
-						continue
-					}
-					resolver.snapshot.Pods.Store(pod.UID, *pod)
-					name := resolver.resolvePodName(pod)
-					for _, podIp := range pod.Status.PodIPs {
-						resolver.ipsMap.Store(podIp.IP, name)
-					}
-				case watch.Deleted:
-					if val, ok := podEvent.Object.(*v1.Pod); ok {
-						resolver.snapshot.Pods.Delete(val)
-					}
-				}
+				resolver.handlePodWatchEvent(&podEvent)
 			case nodeEvent := <-nodesWatcher.ResultChan():
-				switch nodeEvent.Type {
-				case watch.Added:
-					node, ok := nodeEvent.Object.(*v1.Node)
-					if !ok {
-						continue
-					}
-					resolver.snapshot.Nodes.Store(node.UID, *node)
-					for _, nodeAddress := range node.Status.Addresses {
-						resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
-					}
-				case watch.Deleted:
-					if val, ok := nodeEvent.Object.(*v1.Node); ok {
-						resolver.snapshot.Nodes.Delete(val)
-					}
-				}
+				resolver.handleNodeWatchEvent(&nodeEvent)
 			case replicasetsEvent := <-replicasetsWatcher.ResultChan():
-				switch replicasetsEvent.Type {
-				case watch.Added:
-					if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
-						resolver.snapshot.ReplicaSets.Store(val.UID, *val)
-					}
-				case watch.Deleted:
-					if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
-						resolver.snapshot.ReplicaSets.Delete(val)
-					}
-				}
+				resolver.handleReplicaSetWatchEvent(&replicasetsEvent)
 			case daemonsetsEvent := <-daemonsetsWatcher.ResultChan():
-				switch daemonsetsEvent.Type {
-				case watch.Added:
-					if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
-						resolver.snapshot.DaemonSets.Store(val.UID, *val)
-					}
-				case watch.Deleted:
-					if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
-						resolver.snapshot.DaemonSets.Delete(val)
-					}
-				}
-
+				resolver.handleDaemonSetWatchEvent(&daemonsetsEvent)
 			case statefulsetsEvent := <-statefulsetsWatcher.ResultChan():
-				switch statefulsetsEvent.Type {
-				case watch.Added:
-					if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
-						resolver.snapshot.StatefulSets.Store(val.UID, *val)
-					}
-				case watch.Deleted:
-					if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
-						resolver.snapshot.StatefulSets.Delete(val)
-					}
-				}
-
+				resolver.handleStatefulSetWatchEvent(&statefulsetsEvent)
 			case jobsEvent := <-jobsWatcher.ResultChan():
-				switch jobsEvent.Type {
-				case watch.Added:
-					if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
-						resolver.snapshot.Jobs.Store(val.UID, *val)
-					}
-				case watch.Deleted:
-					if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
-						resolver.snapshot.Jobs.Delete(val)
-					}
-				}
-
+				resolver.handleJobsWatchEvent(&jobsEvent)
 			case servicesEvent := <-servicesWatcher.ResultChan():
-				switch servicesEvent.Type {
-				case watch.Added:
-					service, ok := servicesEvent.Object.(*v1.Service)
-					if !ok {
-						continue
-					}
-					resolver.snapshot.Services.Store(service.UID, *service)
-
-					// services has (potentially multiple) ClusterIP
-					name := service.Name + ":" + service.Namespace
-
-					// TODO maybe try to match service to workload
-					for _, clusterIp := range service.Spec.ClusterIPs {
-						if clusterIp != "None" {
-							_, ok := resolver.ipsMap.Load(clusterIp)
-							if !ok {
-								resolver.ipsMap.Store(clusterIp, name)
-							}
-						}
-					}
-				case watch.Deleted:
-					if val, ok := servicesEvent.Object.(*v1.Service); ok {
-						resolver.snapshot.Services.Delete(val)
-					}
-				}
+				resolver.handleServicesWatchEvent(&servicesEvent)
 			case deploymentsEvent := <-deploymentsWatcher.ResultChan():
-				switch deploymentsEvent.Type {
-				case watch.Added:
-					if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
-						resolver.snapshot.Deployments.Store(val.UID, *val)
-					}
-				case watch.Deleted:
-					if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
-						resolver.snapshot.Deployments.Delete(val)
-					}
-				}
-
+				resolver.handleDeploymentsWatchEvent(&deploymentsEvent)
 			case cronjobsEvent := <-cronJobsWatcher.ResultChan():
-				switch cronjobsEvent.Type {
-				case watch.Added:
-					if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
-						resolver.snapshot.CronJobs.Store(val.UID, *val)
-					}
-				case watch.Deleted:
-					if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
-						resolver.snapshot.CronJobs.Delete(val)
-					}
-				}
+				resolver.handleCronJobsWatchEvent(&cronjobsEvent)
 			}
 		}
 	}()
 
 	// to avoid races, this is done again after registering the watchers
-	resolver.syncUpdateClusterSnapshot()
-	resolver.updateIpMapping()
+	resolver.getResolvedClusterSnapshot()
 
 	return nil
 }
@@ -268,18 +144,174 @@ func (resolver *K8sIPResolver) StopWatching() {
 	resolver.stopSignal <- true
 }
 
+func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
+	switch podEvent.Type {
+	case watch.Added:
+		pod, ok := podEvent.Object.(*v1.Pod)
+		if !ok {
+			return
+		}
+		resolver.snapshot.Pods.Store(pod.UID, *pod)
+		name := resolver.resolvePodName(pod)
+		for _, podIp := range pod.Status.PodIPs {
+			resolver.ipsMap.Store(podIp.IP, name)
+		}
+	case watch.Modified:
+		pod, ok := podEvent.Object.(*v1.Pod)
+		if !ok {
+			return
+		}
+		resolver.snapshot.Pods.Store(pod.UID, *pod)
+		name := resolver.resolvePodName(pod)
+		for _, podIp := range pod.Status.PodIPs {
+			resolver.ipsMap.Store(podIp.IP, name)
+		}
+	case watch.Deleted:
+		if val, ok := podEvent.Object.(*v1.Pod); ok {
+			resolver.snapshot.Pods.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
+	switch nodeEvent.Type {
+	case watch.Added:
+		node, ok := nodeEvent.Object.(*v1.Node)
+		if !ok {
+			return
+		}
+		resolver.snapshot.Nodes.Store(node.UID, *node)
+		for _, nodeAddress := range node.Status.Addresses {
+			resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
+		}
+	case watch.Deleted:
+		if val, ok := nodeEvent.Object.(*v1.Node); ok {
+			resolver.snapshot.Nodes.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleReplicaSetWatchEvent(replicasetsEvent *watch.Event) {
+	switch replicasetsEvent.Type {
+	case watch.Added:
+		if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
+			resolver.snapshot.ReplicaSets.Store(val.UID, *val)
+		}
+	case watch.Deleted:
+		if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
+			resolver.snapshot.ReplicaSets.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleDaemonSetWatchEvent(daemonsetsEvent *watch.Event) {
+	switch daemonsetsEvent.Type {
+	case watch.Added:
+		if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
+			resolver.snapshot.DaemonSets.Store(val.UID, *val)
+		}
+	case watch.Deleted:
+		if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
+			resolver.snapshot.DaemonSets.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleStatefulSetWatchEvent(statefulsetsEvent *watch.Event) {
+	switch statefulsetsEvent.Type {
+	case watch.Added:
+		if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
+			resolver.snapshot.StatefulSets.Store(val.UID, *val)
+		}
+	case watch.Deleted:
+		if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
+			resolver.snapshot.StatefulSets.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleJobsWatchEvent(jobsEvent *watch.Event) {
+	switch jobsEvent.Type {
+	case watch.Added:
+		if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
+			resolver.snapshot.Jobs.Store(val.UID, *val)
+		}
+	case watch.Deleted:
+		if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
+			resolver.snapshot.Jobs.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleServicesWatchEvent(servicesEvent *watch.Event) {
+	switch servicesEvent.Type {
+	case watch.Added:
+		service, ok := servicesEvent.Object.(*v1.Service)
+		if !ok {
+			return
+		}
+		resolver.snapshot.Services.Store(service.UID, *service)
+
+		// services has (potentially multiple) ClusterIP
+		name := service.Name + ":" + service.Namespace
+
+		// TODO maybe try to match service to workload
+		for _, clusterIp := range service.Spec.ClusterIPs {
+			if clusterIp != "None" {
+				_, ok := resolver.ipsMap.Load(clusterIp)
+				if !ok {
+					resolver.ipsMap.Store(clusterIp, name)
+				}
+			}
+		}
+	case watch.Deleted:
+		if val, ok := servicesEvent.Object.(*v1.Service); ok {
+			resolver.snapshot.Services.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleDeploymentsWatchEvent(deploymentsEvent *watch.Event) {
+	switch deploymentsEvent.Type {
+	case watch.Added:
+		if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
+			resolver.snapshot.Deployments.Store(val.UID, *val)
+		}
+	case watch.Deleted:
+		if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
+			resolver.snapshot.Deployments.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) handleCronJobsWatchEvent(cronjobsEvent *watch.Event) {
+	switch cronjobsEvent.Type {
+	case watch.Added:
+		if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
+			resolver.snapshot.CronJobs.Store(val.UID, *val)
+		}
+	case watch.Deleted:
+		if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
+			resolver.snapshot.CronJobs.Delete(val)
+		}
+	}
+}
+
+func (resolver *K8sIPResolver) getResolvedClusterSnapshot() {
+	resolver.getFullClusterSnapshot()
+	resolver.updateIpMapping()
+}
+
 // iterate the API for initial coverage of the cluster's state
-func (resolver *K8sIPResolver) syncUpdateClusterSnapshot() error {
+func (resolver *K8sIPResolver) getFullClusterSnapshot() error {
 	pods, err := resolver.clientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return errors.New("error getting pods, aborting snapshot update")
 	}
-	resolver.snapshot.Pods = sync.Map{}
 	for _, pod := range pods.Items {
 		resolver.snapshot.Pods.Store(pod.UID, pod)
 	}
 
-	resolver.snapshot.Nodes = sync.Map{}
 	nodes, err := resolver.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return errors.New("error getting nodes, aborting snapshot update")
