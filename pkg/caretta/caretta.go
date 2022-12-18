@@ -2,9 +2,11 @@ package caretta
 
 import (
 	"context"
+	"fmt"
 	"hash/fnv"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -19,9 +21,10 @@ import (
 )
 
 const (
-	prometheusEndpoint     = "/metrics"
-	prometheusPort         = ":7117"
-	pollingIntervalSeconds = 5
+	defaultPrometheusEndpoint     = "/metrics"
+	defaultPrometheusPort         = ":7117"
+	defaultPollingIntervalSeconds = 5
+	defaultShouldResolveDns       = false
 )
 
 var (
@@ -37,22 +40,32 @@ type Caretta struct {
 	stopSignal    chan bool
 	tracer        tracing.LinksTracer
 	metricsServer *http.Server
+	config        carettaConfig
+}
+
+// hold configurable values
+type carettaConfig struct {
+	shouldResolveDns       bool
+	prometheusPort         string
+	prometheusEndpoint     string
+	pollingIntervalSeconds int
 }
 
 func NewCaretta() *Caretta {
 	return &Caretta{
 		stopSignal: make(chan bool, 1),
+		config:     readConfig(),
 	}
 }
 
 func (caretta *Caretta) Start() {
-	caretta.metricsServer = metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
+	caretta.metricsServer = metrics.StartMetricsServer(defaultPrometheusEndpoint, defaultPrometheusPort)
 
 	clientset, err := caretta.getClientSet()
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
-	resolver := caretta_k8s.NewK8sIPResolver(clientset)
+	resolver := caretta_k8s.NewK8sIPResolver(clientset, caretta.config.shouldResolveDns)
 	if resolver.StartWatching() != nil {
 		log.Fatalf("Error watching cluster's state: %v", err)
 	}
@@ -66,7 +79,7 @@ func (caretta *Caretta) Start() {
 		log.Fatalf("Couldn't load probes - %v", err)
 	}
 
-	pollingTicker := time.NewTicker(pollingIntervalSeconds * time.Second)
+	pollingTicker := time.NewTicker(time.Duration(caretta.config.pollingIntervalSeconds) * time.Second)
 
 	pastLinks := make(map[tracing.NetworkLink]uint64)
 
@@ -104,6 +117,45 @@ func (caretta *Caretta) Stop() {
 		log.Printf("Error shutting Prometheus server down: %v", err)
 	}
 
+}
+
+// environment variables based, encaplsulated to enable future changes
+func readConfig() carettaConfig {
+	port := defaultPrometheusPort
+	if val := os.Getenv("PROM_PORT"); val != "" {
+		valInt, err := strconv.Atoi(val)
+		if err == nil {
+			port = fmt.Sprintf(":%d", valInt)
+		}
+	}
+
+	endpoint := defaultPrometheusEndpoint
+	if val := os.Getenv("PROM_ENDPOINT"); val != "" {
+		endpoint = val
+	}
+
+	interval := defaultPollingIntervalSeconds
+	if val := os.Getenv("POLL_INTERVAL"); val != "" {
+		valInt, err := strconv.Atoi(val)
+		if err == nil {
+			interval = valInt
+		}
+	}
+
+	shouldResolveDns := defaultShouldResolveDns
+	if val := os.Getenv("RESOLVE_DNS"); val != "" {
+		valBool, err := strconv.ParseBool(val)
+		if err == nil {
+			shouldResolveDns = valBool
+		}
+	}
+
+	return carettaConfig{
+		shouldResolveDns:       shouldResolveDns,
+		prometheusPort:         port,
+		prometheusEndpoint:     endpoint,
+		pollingIntervalSeconds: interval,
+	}
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {

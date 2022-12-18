@@ -33,6 +33,9 @@ spec:
             - containerPort: 7117
               name: prom-metrics
               protocol: TCP
+          env:
+            - name: "RESOLVE_DNS"
+              value: "{{ .Values.enableDnsResolving }}"
           securityContext:
             privileged: true
             readOnlyRootFilesystem: true

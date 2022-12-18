@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/watch"
@@ -29,18 +30,22 @@ type clusterSnapshot struct {
 }
 
 type K8sIPResolver struct {
-	clientset  *kubernetes.Clientset
-	snapshot   clusterSnapshot
-	ipsMap     sync.Map
-	stopSignal chan bool
+	clientset        *kubernetes.Clientset
+	snapshot         clusterSnapshot
+	ipsMap           sync.Map
+	stopSignal       chan bool
+	shouldResolveDns bool
+	dnsResolvedIps   map[string]string
 }
 
-func NewK8sIPResolver(clientset *kubernetes.Clientset) *K8sIPResolver {
+func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) *K8sIPResolver {
 	return &K8sIPResolver{
-		clientset:  clientset,
-		snapshot:   clusterSnapshot{},
-		ipsMap:     sync.Map{},
-		stopSignal: make(chan bool),
+		clientset:        clientset,
+		snapshot:         clusterSnapshot{},
+		ipsMap:           sync.Map{},
+		stopSignal:       make(chan bool),
+		shouldResolveDns: resolveDns,
+		dnsResolvedIps:   make(map[string]string),
 	}
 }
 
@@ -53,6 +58,18 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 			return valString
 		}
 		log.Printf("type confusion in ipsMap")
+	}
+
+	if resolver.shouldResolveDns {
+		val, ok := resolver.dnsResolvedIps[ip]
+		if ok {
+			return val
+		}
+		hosts, err := net.LookupAddr(ip)
+		if err == nil && len(hosts) > 0 {
+			resolver.dnsResolvedIps[ip] = hosts[0]
+			return hosts[0]
+		}
 	}
 	return ip
 }
