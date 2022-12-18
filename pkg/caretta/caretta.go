@@ -99,7 +99,11 @@ func (caretta *Caretta) Stop() {
 	if err != nil {
 		log.Printf("Error unloading bpf objects: %v", err)
 	}
-	caretta.metricsServer.Shutdown(context.Background())
+	err = caretta.metricsServer.Shutdown(context.Background())
+	if err != nil {
+		log.Printf("Error shutting Prometheus server down")
+	}
+
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {
