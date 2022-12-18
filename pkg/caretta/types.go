@@ -1,8 +1,10 @@
-package tracing
+package caretta
 
 import (
 	"encoding/binary"
 	"net"
+
+	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
 )
 
 const (
@@ -13,12 +15,6 @@ const (
 
 type IP uint32
 
-type IPResolver interface {
-	ResolveIP(string) string
-	StartWatching() error
-	StopWatching()
-}
-
 func (ip IP) String() string {
 	netIp := make(net.IP, 4)
 	binary.LittleEndian.PutUint32(netIp, uint32(ip))
@@ -27,8 +23,8 @@ func (ip IP) String() string {
 
 // "final" type of link, like an edge on the graph
 type NetworkLink struct {
-	ClientHost string
-	ServerHost string
+	Client     caretta_k8s.Workload
+	Server     caretta_k8s.Workload
 	ServerPort uint16
 	Role       uint32
 }
