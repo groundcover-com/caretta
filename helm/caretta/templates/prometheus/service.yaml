@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    app: caretta-prom
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+  - name: http-prom
+    port: 9090
+    protocol: TCP
+    targetPort: http-prom
+  selector:
+    app: caretta-prom
+  type: ClusterIP

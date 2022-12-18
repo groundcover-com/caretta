@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: caretta-prom
+spec:
+  selector:
+    matchLabels:
+      app: caretta-prom
+  template:
+    metadata:
+      labels:
+        app: caretta-prom
+    spec:
+      serviceAccountName: caretta
+      containers:
+      - name: caretta-prom
+        image: prom/prometheus:latest
+        volumeMounts:
+        - name: caretta-prometheus-config-volume
+          mountPath: /etc/prometheus
+        ports:
+        - containerPort: 9090
+          name: http-prom
+      volumes:
+      - name: caretta-prometheus-config-volume
+        configMap:
+          defaultMode: 420
+          name: caretta-prometheus-config-volume

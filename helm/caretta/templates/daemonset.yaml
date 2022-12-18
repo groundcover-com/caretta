@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: caretta
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: caretta
+spec:
+  selector:
+    matchLabels:
+      app: caretta
+  template:
+    metadata:
+      labels:
+        app: caretta
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: stsonly
+          operator: Exists
+          effect: NoSchedule
+      serviceAccountName: caretta
+      containers:
+        - name: caretta
+          image: {{ .Values.carettaImage | quote }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7117
+              name: prom-metrics
+              protocol: TCP
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /proc
+              name: proc
+            - mountPath: /sys/kernel/debug
+              name: debug
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: debug
+          hostPath:
+            path: /sys/kernel/debug

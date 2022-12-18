@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: caretta-grafana
+spec:
+  selector:
+    matchLabels:
+      app: caretta-grafana
+  template:
+    metadata:
+      labels:
+        app: caretta-grafana
+    spec:
+      serviceAccountName: caretta
+      containers:
+      - name: caretta-grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        volumeMounts:
+        - mountPath: /etc/grafana/provisioning/datasources
+          name: caretta-grafana-datasources
+        - mountPath: /etc/grafana/provisioning/dashboards
+          name: caretta-grafana-dashboards-provisioning
+        - mountPath: /var/lib/grafana/dashboards
+          name: caretta-grafana-dashboards
+      volumes:
+      - name: caretta-grafana-datasources
+        configMap:
+          defaultMode: 420
+          name: caretta-grafana-datasources
+      - name: caretta-grafana-dashboards-provisioning
+        configMap:
+          defaultMode: 420
+          name: caretta-grafana-dashboards-provisioning
+      - name: caretta-grafana-dashboards
+        configMap:
+          defaultMode: 420
+          name: caretta-grafana-dashboards
