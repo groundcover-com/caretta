@@ -11,11 +11,14 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/hraban/lrucache"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const MAX_RESOLVED_DNS = 10000 // arbitrary limit
 
 type clusterSnapshot struct {
 	Pods         sync.Map // map[types.UID]v1.Pod

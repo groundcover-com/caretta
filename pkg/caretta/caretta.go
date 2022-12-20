@@ -2,11 +2,9 @@ package caretta
 
 import (
 	"context"
-	"fmt"
 	"hash/fnv"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -18,13 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-)
-
-const (
-	defaultPrometheusEndpoint     = "/metrics"
-	defaultPrometheusPort         = ":7117"
-	defaultPollingIntervalSeconds = 5
-	defaultShouldResolveDns       = false
 )
 
 var (
@@ -43,14 +34,6 @@ type Caretta struct {
 	config        carettaConfig
 }
 
-// hold configurable values
-type carettaConfig struct {
-	shouldResolveDns       bool
-	prometheusPort         string
-	prometheusEndpoint     string
-	pollingIntervalSeconds int
-}
-
 func NewCaretta() *Caretta {
 	return &Caretta{
 		stopSignal: make(chan bool, 1),
@@ -59,7 +42,7 @@ func NewCaretta() *Caretta {
 }
 
 func (caretta *Caretta) Start() {
-	caretta.metricsServer = metrics.StartMetricsServer(defaultPrometheusEndpoint, defaultPrometheusPort)
+	caretta.metricsServer = metrics.StartMetricsServer(caretta.config.prometheusEndpoint, caretta.config.prometheusPort)
 
 	clientset, err := caretta.getClientSet()
 	if err != nil {
@@ -117,45 +100,6 @@ func (caretta *Caretta) Stop() {
 		log.Printf("Error shutting Prometheus server down: %v", err)
 	}
 
-}
-
-// environment variables based, encaplsulated to enable future changes
-func readConfig() carettaConfig {
-	port := defaultPrometheusPort
-	if val := os.Getenv("PROM_PORT"); val != "" {
-		valInt, err := strconv.Atoi(val)
-		if err == nil {
-			port = fmt.Sprintf(":%d", valInt)
-		}
-	}
-
-	endpoint := defaultPrometheusEndpoint
-	if val := os.Getenv("PROM_ENDPOINT"); val != "" {
-		endpoint = val
-	}
-
-	interval := defaultPollingIntervalSeconds
-	if val := os.Getenv("POLL_INTERVAL"); val != "" {
-		valInt, err := strconv.Atoi(val)
-		if err == nil {
-			interval = valInt
-		}
-	}
-
-	shouldResolveDns := defaultShouldResolveDns
-	if val := os.Getenv("RESOLVE_DNS"); val != "" {
-		valBool, err := strconv.ParseBool(val)
-		if err == nil {
-			shouldResolveDns = valBool
-		}
-	}
-
-	return carettaConfig{
-		shouldResolveDns:       shouldResolveDns,
-		prometheusPort:         port,
-		prometheusEndpoint:     endpoint,
-		pollingIntervalSeconds: interval,
-	}
 }
 
 func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {
