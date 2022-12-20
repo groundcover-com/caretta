@@ -18,12 +18,6 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const (
-	prometheusEndpoint     = "/metrics"
-	prometheusPort         = ":7117"
-	pollingIntervalSeconds = 5
-)
-
 var (
 	linksMetrics = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "caretta_links_observed",
@@ -37,22 +31,27 @@ type Caretta struct {
 	stopSignal    chan bool
 	tracer        tracing.LinksTracer
 	metricsServer *http.Server
+	config        carettaConfig
 }
 
 func NewCaretta() *Caretta {
 	return &Caretta{
 		stopSignal: make(chan bool, 1),
+		config:     readConfig(),
 	}
 }
 
 func (caretta *Caretta) Start() {
-	caretta.metricsServer = metrics.StartMetricsServer(prometheusEndpoint, prometheusPort)
+	caretta.metricsServer = metrics.StartMetricsServer(caretta.config.prometheusEndpoint, caretta.config.prometheusPort)
 
 	clientset, err := caretta.getClientSet()
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
-	resolver := caretta_k8s.NewK8sIPResolver(clientset)
+	resolver, err := caretta_k8s.NewK8sIPResolver(clientset, caretta.config.shouldResolveDns)
+	if err != nil {
+		log.Fatalf("Error creating resolver: %v", err)
+	}
 	if resolver.StartWatching() != nil {
 		log.Fatalf("Error watching cluster's state: %v", err)
 	}
@@ -66,7 +65,7 @@ func (caretta *Caretta) Start() {
 		log.Fatalf("Couldn't load probes - %v", err)
 	}
 
-	pollingTicker := time.NewTicker(pollingIntervalSeconds * time.Second)
+	pollingTicker := time.NewTicker(time.Duration(caretta.config.pollingIntervalSeconds) * time.Second)
 
 	pastLinks := make(map[tracing.NetworkLink]uint64)
 

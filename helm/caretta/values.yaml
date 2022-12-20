@@ -1,1 +1,5 @@
 carettaImage: "125608480246.dkr.ecr.eu-west-3.amazonaws.com/caretta:latest"
+enableDnsResolving: true
+prometheusPort: 7117
+prometheusEndpoint: "/metrics"
+pollIntervalSeconds: 5

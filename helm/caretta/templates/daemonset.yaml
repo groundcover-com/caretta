@@ -30,9 +30,18 @@ spec:
           image: {{ .Values.carettaImage | quote }}
           imagePullPolicy: Always
           ports:
-            - containerPort: 7117
+            - containerPort: {{ .Values.prometheusPort }}
               name: prom-metrics
               protocol: TCP
+          env:
+            - name: "RESOLVE_DNS"
+              value: "{{ .Values.enableDnsResolving }}"
+            - name: "PROMETHEUS_PORT"
+              value: "{{ .Values.prometheusPort }}"
+            - name: "PROMETHEUS_ENDPOINT"
+              value: "{{ .Values.prometheusEndpoint }}"
+            - name: "POLL_INTERVAL"
+              value: "{{ .Values.pollIntervalSeconds }}"
           securityContext:
             privileged: true
             readOnlyRootFilesystem: true

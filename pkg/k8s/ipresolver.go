@@ -5,16 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 
+	lrucache "github.com/hashicorp/golang-lru/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const MAX_RESOLVED_DNS = 10000 // arbitrary limit
 
 type clusterSnapshot struct {
 	Pods         sync.Map // map[types.UID]v1.Pod
@@ -29,19 +33,33 @@ type clusterSnapshot struct {
 }
 
 type K8sIPResolver struct {
-	clientset  *kubernetes.Clientset
-	snapshot   clusterSnapshot
-	ipsMap     sync.Map
-	stopSignal chan bool
+	clientset        *kubernetes.Clientset
+	snapshot         clusterSnapshot
+	ipsMap           sync.Map
+	stopSignal       chan bool
+	shouldResolveDns bool
+	dnsResolvedIps   *lrucache.Cache[string, string]
 }
 
-func NewK8sIPResolver(clientset *kubernetes.Clientset) *K8sIPResolver {
-	return &K8sIPResolver{
-		clientset:  clientset,
-		snapshot:   clusterSnapshot{},
-		ipsMap:     sync.Map{},
-		stopSignal: make(chan bool),
+func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) (*K8sIPResolver, error) {
+	var dnsCache *lrucache.Cache[string, string]
+	if resolveDns {
+		var err error
+		dnsCache, err = lrucache.New[string, string](MAX_RESOLVED_DNS)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		dnsCache = nil
 	}
+	return &K8sIPResolver{
+		clientset:        clientset,
+		snapshot:         clusterSnapshot{},
+		ipsMap:           sync.Map{},
+		stopSignal:       make(chan bool),
+		shouldResolveDns: resolveDns,
+		dnsResolvedIps:   dnsCache,
+	}, nil
 }
 
 // resolve the given IP from the resolver's cache
@@ -53,6 +71,18 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 			return valString
 		}
 		log.Printf("type confusion in ipsMap")
+	}
+
+	if resolver.shouldResolveDns {
+		val, ok := resolver.dnsResolvedIps.Get(ip)
+		if ok {
+			return val
+		}
+		hosts, err := net.LookupAddr(ip)
+		if err == nil && len(hosts) > 0 {
+			resolver.dnsResolvedIps.Add(ip, hosts[0])
+			return hosts[0]
+		}
 	}
 	return ip
 }

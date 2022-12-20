@@ -1,6 +1,6 @@
 module github.com/groundcover-com/caretta
 
-go 1.19
+go 1.18
 
 require (
 	k8s.io/api v0.25.4
@@ -57,3 +57,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
+
+require github.com/hashicorp/golang-lru/v2 v2.0.1
