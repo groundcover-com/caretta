@@ -78,6 +78,7 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 		}
 		log.Printf("type confusion in ipsMap")
 	}
+	host := ip
 
 	if resolver.shouldResolveDns {
 		val, ok := resolver.dnsResolvedIps.Get(ip)
@@ -87,15 +88,11 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 		hosts, err := net.LookupAddr(ip)
 		if err == nil && len(hosts) > 0 {
 			resolver.dnsResolvedIps.Add(ip, hosts[0])
-			return Workload{
-				Name:      hosts[0],
-				Namespace: "External",
-				Kind:      "External",
-			}
+			host = hosts[0]
 		}
 	}
 	return Workload{
-		Name:      ip,
+		Name:      host,
 		Namespace: "External",
 		Kind:      "External",
 	}
