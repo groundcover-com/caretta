@@ -38,7 +38,7 @@ type K8sIPResolver struct {
 	ipsMap           sync.Map
 	stopSignal       chan bool
 	shouldResolveDns bool
-	dnsResolvedIps   map[string]string
+	dnsResolvedIps   lrucache.Cache
 }
 
 func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) *K8sIPResolver {
@@ -48,7 +48,7 @@ func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) *K8sIPRe
 		ipsMap:           sync.Map{},
 		stopSignal:       make(chan bool),
 		shouldResolveDns: resolveDns,
-		dnsResolvedIps:   make(map[string]string),
+		dnsResolvedIps:   *lrucache.New(MAX_RESOLVED_DNS),
 	}
 }
 
@@ -64,13 +64,16 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 	}
 
 	if resolver.shouldResolveDns {
-		val, ok := resolver.dnsResolvedIps[ip]
-		if ok {
-			return val
+		val, err := resolver.dnsResolvedIps.Get(ip)
+		if err != nil {
+			valString, ok := val.(string)
+			if ok {
+				return valString
+			}
 		}
 		hosts, err := net.LookupAddr(ip)
 		if err == nil && len(hosts) > 0 {
-			resolver.dnsResolvedIps[ip] = hosts[0]
+			resolver.dnsResolvedIps.Set(ip, hosts[0])
 			return hosts[0]
 		}
 	}
