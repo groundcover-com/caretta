@@ -14,8 +14,6 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 )
 
-require github.com/hraban/lrucache v0.0.0-20201130153820-17052bf09781
-
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -59,3 +57,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
+
+require github.com/hashicorp/golang-lru/v2 v2.0.1

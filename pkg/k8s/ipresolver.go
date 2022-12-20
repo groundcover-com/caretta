@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/hraban/lrucache"
+	lrucache "github.com/hashicorp/golang-lru/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -38,18 +38,28 @@ type K8sIPResolver struct {
 	ipsMap           sync.Map
 	stopSignal       chan bool
 	shouldResolveDns bool
-	dnsResolvedIps   lrucache.Cache
+	dnsResolvedIps   *lrucache.Cache[string, string]
 }
 
-func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) *K8sIPResolver {
+func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) (*K8sIPResolver, error) {
+	var dnsCache *lrucache.Cache[string, string]
+	if resolveDns {
+		var err error
+		dnsCache, err = lrucache.New[string, string](MAX_RESOLVED_DNS)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		dnsCache = nil
+	}
 	return &K8sIPResolver{
 		clientset:        clientset,
 		snapshot:         clusterSnapshot{},
 		ipsMap:           sync.Map{},
 		stopSignal:       make(chan bool),
 		shouldResolveDns: resolveDns,
-		dnsResolvedIps:   *lrucache.New(MAX_RESOLVED_DNS),
-	}
+		dnsResolvedIps:   dnsCache,
+	}, nil
 }
 
 // resolve the given IP from the resolver's cache
@@ -64,16 +74,13 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) string {
 	}
 
 	if resolver.shouldResolveDns {
-		val, err := resolver.dnsResolvedIps.Get(ip)
-		if err != nil {
-			valString, ok := val.(string)
-			if ok {
-				return valString
-			}
+		val, ok := resolver.dnsResolvedIps.Get(ip)
+		if ok {
+			return val
 		}
 		hosts, err := net.LookupAddr(ip)
 		if err == nil && len(hosts) > 0 {
-			resolver.dnsResolvedIps.Set(ip, hosts[0])
+			resolver.dnsResolvedIps.Add(ip, hosts[0])
 			return hosts[0]
 		}
 	}

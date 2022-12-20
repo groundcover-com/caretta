@@ -48,7 +48,10 @@ func (caretta *Caretta) Start() {
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
-	resolver := caretta_k8s.NewK8sIPResolver(clientset, caretta.config.shouldResolveDns)
+	resolver, err := caretta_k8s.NewK8sIPResolver(clientset, caretta.config.shouldResolveDns)
+	if err != nil {
+		log.Fatalf("Error creating resolver: %v", err)
+	}
 	if resolver.StartWatching() != nil {
 		log.Fatalf("Error watching cluster's state: %v", err)
 	}
