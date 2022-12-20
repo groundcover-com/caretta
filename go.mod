@@ -1,6 +1,6 @@
 module github.com/groundcover-com/caretta
 
-go 1.19
+go 1.18
 
 require (
 	k8s.io/api v0.25.4
@@ -13,6 +13,8 @@ require (
 	github.com/cilium/ebpf v0.9.3
 	github.com/prometheus/client_golang v1.14.0
 )
+
+require github.com/hraban/lrucache v0.0.0-20201130153820-17052bf09781
 
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
