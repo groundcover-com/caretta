@@ -240,7 +240,7 @@ func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 			resolver.storeIpInMap(nodeAddress.Address, &Workload{
 				Name:      node.Name,
 				Namespace: "Node",
-				Kind:      "",
+				Kind:      "Node",
 			}, true, true)
 		}
 	case watch.Deleted:
