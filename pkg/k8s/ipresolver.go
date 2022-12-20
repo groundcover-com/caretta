@@ -340,7 +340,7 @@ func (resolver *K8sIPResolver) handleCronJobsWatchEvent(cronjobsEvent *watch.Eve
 
 func (resolver *K8sIPResolver) getResolvedClusterSnapshot() error {
 	err := resolver.getFullClusterSnapshot()
-	if err != nil {
+	if err == nil {
 		resolver.updateIpMapping()
 	}
 	return err
