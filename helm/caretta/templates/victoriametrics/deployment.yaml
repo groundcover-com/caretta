@@ -1,31 +1,39 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prometheus
+  name: victoria
   namespace: {{.Release.Namespace}}
   labels:
-    app: caretta-prom
+    app: caretta-victoria
 spec:
   selector:
     matchLabels:
-      app: caretta-prom
+      app: caretta-victoria
   template:
     metadata:
       labels:
-        app: caretta-prom
+        app: caretta-victoria
     spec:
       serviceAccountName: caretta
       containers:
-      - name: caretta-prom
-        image: prom/prometheus:latest
+      - name: caretta-victoria
+        image: victoriametrics/victoria-metrics:latest
+        args:
+          - "--promscrape.config=/etc/prometheus/prometheus.yml"
+          - "--loggerLevel=INFO"
+          - "--eula"
         volumeMounts:
         - name: caretta-prometheus-config-volume
           mountPath: /etc/prometheus
+        - name: caretta-vm-pvc
+          mountPath: /victoria-metrics-data
         ports:
-        - containerPort: 9090
+        - containerPort: 8428
           name: http-prom
       volumes:
       - name: caretta-prometheus-config-volume
         configMap:
           defaultMode: 420
           name: caretta-prometheus-config-volume
+      - name: caretta-vm-pvc
+        emptyDir: {}

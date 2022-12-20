@@ -1,0 +1,16 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: caretta-vm-pvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: "caretta-victoria"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "100Mi"
+  selector:
+    matchLabels:
+      app: "caretta-victoria"
