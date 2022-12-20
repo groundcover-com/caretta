@@ -83,12 +83,13 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 	if resolver.shouldResolveDns {
 		val, ok := resolver.dnsResolvedIps.Get(ip)
 		if ok {
-			return val
-		}
-		hosts, err := net.LookupAddr(ip)
-		if err == nil && len(hosts) > 0 {
-			resolver.dnsResolvedIps.Add(ip, hosts[0])
-			host = hosts[0]
+			host = val
+		} else {
+			hosts, err := net.LookupAddr(ip)
+			if err == nil && len(hosts) > 0 {
+				resolver.dnsResolvedIps.Add(ip, hosts[0])
+				host = hosts[0]
+			}
 		}
 	}
 	return Workload{
