@@ -207,7 +207,7 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 		resolver.snapshot.Pods.Store(pod.UID, *pod)
 		entry := resolver.resolvePodDescriptor(pod)
 		for _, podIp := range pod.Status.PodIPs {
-			resolver.storeIpInMap(podIp.IP, &entry, false, true)
+			resolver.storeWorkloadsIP(podIp.IP, &entry)
 		}
 	case watch.Modified:
 		pod, ok := podEvent.Object.(*v1.Pod)
@@ -217,7 +217,7 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 		resolver.snapshot.Pods.Store(pod.UID, *pod)
 		entry := resolver.resolvePodDescriptor(pod)
 		for _, podIp := range pod.Status.PodIPs {
-			resolver.storeIpInMap(podIp.IP, &entry, false, true)
+			resolver.storeWorkloadsIP(podIp.IP, &entry)
 		}
 	case watch.Deleted:
 		if val, ok := podEvent.Object.(*v1.Pod); ok {
@@ -235,11 +235,11 @@ func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 		}
 		resolver.snapshot.Nodes.Store(node.UID, *node)
 		for _, nodeAddress := range node.Status.Addresses {
-			resolver.storeIpInMap(nodeAddress.Address, &Workload{
+			resolver.storeWorkloadsIP(nodeAddress.Address, &Workload{
 				Name:      node.Name,
 				Namespace: "Node",
 				Kind:      "Node",
-			}, true, true)
+			})
 		}
 	case watch.Deleted:
 		if val, ok := nodeEvent.Object.(*v1.Node); ok {
@@ -321,7 +321,7 @@ func (resolver *K8sIPResolver) handleServicesWatchEvent(servicesEvent *watch.Eve
 			if clusterIp != "None" {
 				_, ok := resolver.ipsMap.Load(clusterIp)
 				if !ok {
-					resolver.storeIpInMap(clusterIp, &workload, false, false)
+					resolver.storeWorkloadsIP(clusterIp, &workload)
 				}
 			}
 		}
@@ -444,21 +444,6 @@ func (resolver *K8sIPResolver) getFullClusterSnapshot() error {
 	return nil
 }
 
-func (resolver *K8sIPResolver) storeIpInMap(ip string, workload *Workload, overrideNodes bool, overrideOther bool) {
-	val, ok := resolver.ipsMap.Load(ip)
-	if ok {
-		valWorkload := val.(Workload)
-		if valWorkload.Namespace == "Node" && !overrideNodes {
-			return
-		}
-		if overrideOther || overrideNodes {
-			resolver.ipsMap.Store(ip, *workload)
-		}
-		return
-	}
-	resolver.ipsMap.Store(ip, *workload)
-}
-
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
 func (resolver *K8sIPResolver) updateIpMapping() {
@@ -482,7 +467,7 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 		// TODO maybe try to match service to workload
 		for _, clusterIp := range service.Spec.ClusterIPs {
 			if clusterIp != "None" {
-				resolver.storeIpInMap(clusterIp, &workload, false, false)
+				resolver.storeWorkloadsIP(clusterIp, &workload)
 			}
 		}
 		return true
@@ -495,10 +480,9 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 			return true // continue
 		}
 		entry := resolver.resolvePodDescriptor(&pod)
-		podPhase := pod.Status.Phase
 		for _, podIp := range pod.Status.PodIPs {
 			// if ip is already in the map, override only if current pod is running
-			resolver.storeIpInMap(podIp.IP, &entry, false, podPhase == v1.PodRunning)
+			resolver.storeWorkloadsIP(podIp.IP, &entry)
 		}
 		return true
 	})
@@ -515,10 +499,24 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 				Namespace: "Node",
 				Kind:      "Node",
 			}
-			resolver.storeIpInMap(nodeAddress.Address, &workload, true, false)
+			resolver.storeWorkloadsIP(nodeAddress.Address, &workload)
 		}
 		return true
 	})
+}
+
+func (resolver *K8sIPResolver) storeWorkloadsIP(ip string, newWorkload *Workload) {
+	// we want to override exisiting workload, unless the existing worklaod is a node and the new one isn't
+	val, ok := resolver.ipsMap.Load(ip)
+	if ok {
+		existingWorkload, ok := val.(Workload)
+		if ok {
+			if existingWorkload.Kind == "Node" && newWorkload.Kind != "Node" {
+				return
+			}
+		}
+	}
+	resolver.ipsMap.Store(ip, *newWorkload)
 }
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
