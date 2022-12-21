@@ -506,7 +506,7 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 }
 
 func (resolver *K8sIPResolver) storeWorkloadsIP(ip string, newWorkload *Workload) {
-	// we want to override exisiting workload, unless the existing worklaod is a node and the new one isn't
+	// we want to override existing workload, unless the existing worklaod is a node and the new one isn't
 	val, ok := resolver.ipsMap.Load(ip)
 	if ok {
 		existingWorkload, ok := val.(Workload)
