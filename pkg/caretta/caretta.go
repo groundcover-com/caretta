@@ -11,7 +11,6 @@ import (
 
 	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/groundcover-com/caretta/pkg/metrics"
-	"github.com/groundcover-com/caretta/pkg/tracing"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"k8s.io/client-go/kubernetes"
@@ -23,13 +22,13 @@ var (
 		Name: "caretta_links_observed",
 		Help: "total bytes_sent value of links observed by caretta since its launch",
 	}, []string{
-		"LinkId", "ClientId", "ClientName", "ClientNamespace", "ServerId", "ServerName", "ServerNamespace", "ServerPort", "Role",
+		"LinkId", "ClientId", "ClientName", "ClientNamespace", "ClientKind", "ServerId", "ServerName", "ServerNamespace", "ServerKind", "ServerPort", "Role",
 	})
 )
 
 type Caretta struct {
 	stopSignal    chan bool
-	tracer        tracing.LinksTracer
+	tracer        LinksTracer
 	metricsServer *http.Server
 	config        carettaConfig
 }
@@ -59,7 +58,7 @@ func (caretta *Caretta) Start() {
 	// wait for resolver to populate
 	time.Sleep(10 * time.Second)
 
-	caretta.tracer = tracing.NewTracer(resolver)
+	caretta.tracer = NewTracer(resolver)
 	err = caretta.tracer.Start()
 	if err != nil {
 		log.Fatalf("Couldn't load probes - %v", err)
@@ -67,7 +66,7 @@ func (caretta *Caretta) Start() {
 
 	pollingTicker := time.NewTicker(time.Duration(caretta.config.pollingIntervalSeconds) * time.Second)
 
-	pastLinks := make(map[tracing.NetworkLink]uint64)
+	pastLinks := make(map[NetworkLink]uint64)
 
 	go func() {
 		for {
@@ -75,7 +74,7 @@ func (caretta *Caretta) Start() {
 			case <-caretta.stopSignal:
 				return
 			case <-pollingTicker.C:
-				var links map[tracing.NetworkLink]uint64
+				var links map[NetworkLink]uint64
 
 				if err != nil {
 					log.Printf("Error updating snapshot of cluster state, skipping iteration")
@@ -105,17 +104,17 @@ func (caretta *Caretta) Stop() {
 
 }
 
-func (caretta *Caretta) handleLink(link *tracing.NetworkLink, throughput uint64) {
-	clientName, clientNamespace := splitNamespace(link.ClientHost)
-	serverName, serverNamespace := splitNamespace(link.ServerHost)
+func (caretta *Caretta) handleLink(link *NetworkLink, throughput uint64) {
 	linksMetrics.With(prometheus.Labels{
-		"LinkId":          strconv.Itoa(int(fnvHash(link.ClientHost+link.ServerHost) + link.Role)),
-		"ClientId":        strconv.Itoa(int(fnvHash(link.ClientHost))),
-		"ClientName":      clientName,
-		"ClientNamespace": clientNamespace,
-		"ServerId":        strconv.Itoa(int(fnvHash(link.ServerHost))),
-		"ServerName":      serverName,
-		"ServerNamespace": serverNamespace,
+		"LinkId":          strconv.Itoa(int(fnvHash(link.Client.Name+link.Client.Namespace+link.Server.Name+link.Server.Namespace) + link.Role)),
+		"ClientId":        strconv.Itoa(int(fnvHash(link.Client.Name + link.Client.Namespace))),
+		"ClientName":      link.Client.Name,
+		"ClientNamespace": link.Client.Namespace,
+		"ClientKind":      link.Client.Kind,
+		"ServerId":        strconv.Itoa(int(fnvHash(link.Server.Name + link.Server.Namespace))),
+		"ServerName":      link.Server.Name,
+		"ServerNamespace": link.Server.Namespace,
+		"ServerKind":      link.Server.Kind,
 		"ServerPort":      strconv.Itoa(int(link.ServerPort)),
 		"Role":            strconv.Itoa(int(link.Role)),
 	}).Set(float64(throughput))

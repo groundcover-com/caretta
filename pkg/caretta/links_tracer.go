@@ -1,10 +1,13 @@
-package tracing
+package caretta
 
 import (
 	"encoding/binary"
 	"errors"
 	"log"
 	"net"
+
+	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
+	"github.com/groundcover-com/caretta/pkg/tracing"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -30,22 +33,20 @@ var (
 	})
 )
 
-type BpfObjects *bpfObjects
-
 type LinksTracer struct {
-	ebpfObjects TracerEbpfObjects
-	resolver    IPResolver
+	ebpfObjects tracing.TracerEbpfObjects
+	resolver    *caretta_k8s.K8sIPResolver
 }
 
 // initializes a LinksTracer object
-func NewTracer(resolver IPResolver) LinksTracer {
+func NewTracer(resolver *caretta_k8s.K8sIPResolver) LinksTracer {
 	tracer := LinksTracer{resolver: resolver}
 	return tracer
 }
 
 func (tracer *LinksTracer) Start() error {
 	var err error
-	tracer.ebpfObjects, err = LoadProbes()
+	tracer.ebpfObjects, err = tracing.LoadProbes()
 	return err
 }
 
@@ -69,7 +70,7 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 	var conn ConnectionIdentifier
 	var throughput ConnectionThroughputStats
 
-	entries := tracer.ebpfObjects.BpfObjs.bpfMaps.Connections.Iterate()
+	entries := tracer.ebpfObjects.BpfObjs.Connections.Iterate()
 	// iterate the map from the eBPF program
 	for entries.Next(&conn, &throughput) {
 		// filter unnecessary connection
@@ -114,13 +115,13 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64) {
 	// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
 	var throughput ConnectionThroughputStats
-	err := tracer.ebpfObjects.BpfObjs.bpfMaps.Connections.Lookup(conn, &throughput)
+	err := tracer.ebpfObjects.BpfObjs.Connections.Lookup(conn, &throughput)
 	if err != nil {
 		log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
 		failedConnectionDeletion.Inc()
 		return
 	}
-	err = tracer.ebpfObjects.BpfObjs.bpfMaps.Connections.Delete(conn)
+	err = tracer.ebpfObjects.BpfObjs.Connections.Delete(conn)
 	if err != nil {
 		log.Printf("Error deleting connection from map: %v", err)
 		failedConnectionDeletion.Inc()
@@ -140,18 +141,18 @@ func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifie
 	var link NetworkLink
 	link.Role = connection.Role
 
-	srcHost := tracer.resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
-	dstHost := tracer.resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
+	srcWorkload := tracer.resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
+	dstWorkload := tracer.resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
 
 	if connection.Role == ClientConnectionRole {
 		// Src is Client, Dst is Server, Port is DstPort
-		link.ClientHost = srcHost
-		link.ServerHost = dstHost
+		link.Client = srcWorkload
+		link.Server = dstWorkload
 		link.ServerPort = connection.Tuple.DstPort
 	} else if connection.Role == ServerConnectionRole {
 		// Dst is Client, Src is Server, Port is SrcPort
-		link.ClientHost = dstHost
-		link.ServerHost = srcHost
+		link.Client = dstWorkload
+		link.Server = srcWorkload
 		link.ServerPort = connection.Tuple.SrcPort
 	} else {
 		return NetworkLink{}, errors.New("connection's role is unknown")

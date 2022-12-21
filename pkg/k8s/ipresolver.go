@@ -41,6 +41,12 @@ type K8sIPResolver struct {
 	dnsResolvedIps   *lrucache.Cache[string, string]
 }
 
+type Workload struct {
+	Name      string
+	Namespace string
+	Kind      string
+}
+
 func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) (*K8sIPResolver, error) {
 	var dnsCache *lrucache.Cache[string, string]
 	if resolveDns {
@@ -64,27 +70,33 @@ func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) (*K8sIPR
 
 // resolve the given IP from the resolver's cache
 // if not available, return the IP itself.
-func (resolver *K8sIPResolver) ResolveIP(ip string) string {
+func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 	if val, ok := resolver.ipsMap.Load(ip); ok {
-		valString, ok := val.(string)
+		entry, ok := val.(Workload)
 		if ok {
-			return valString
+			return entry
 		}
 		log.Printf("type confusion in ipsMap")
 	}
+	host := ip
 
 	if resolver.shouldResolveDns {
 		val, ok := resolver.dnsResolvedIps.Get(ip)
 		if ok {
-			return val
-		}
-		hosts, err := net.LookupAddr(ip)
-		if err == nil && len(hosts) > 0 {
-			resolver.dnsResolvedIps.Add(ip, hosts[0])
-			return hosts[0]
+			host = val
+		} else {
+			hosts, err := net.LookupAddr(ip)
+			if err == nil && len(hosts) > 0 {
+				resolver.dnsResolvedIps.Add(ip, hosts[0])
+				host = hosts[0]
+			}
 		}
 	}
-	return ip
+	return Workload{
+		Name:      host,
+		Namespace: "External",
+		Kind:      "External",
+	}
 }
 
 func (resolver *K8sIPResolver) StartWatching() error {
@@ -193,9 +205,9 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 			return
 		}
 		resolver.snapshot.Pods.Store(pod.UID, *pod)
-		name := resolver.resolvePodName(pod)
+		entry := resolver.resolvePodDescriptor(pod)
 		for _, podIp := range pod.Status.PodIPs {
-			resolver.ipsMap.Store(podIp.IP, name)
+			resolver.storeWorkloadsIP(podIp.IP, &entry)
 		}
 	case watch.Modified:
 		pod, ok := podEvent.Object.(*v1.Pod)
@@ -203,9 +215,9 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 			return
 		}
 		resolver.snapshot.Pods.Store(pod.UID, *pod)
-		name := resolver.resolvePodName(pod)
+		entry := resolver.resolvePodDescriptor(pod)
 		for _, podIp := range pod.Status.PodIPs {
-			resolver.ipsMap.Store(podIp.IP, name)
+			resolver.storeWorkloadsIP(podIp.IP, &entry)
 		}
 	case watch.Deleted:
 		if val, ok := podEvent.Object.(*v1.Pod); ok {
@@ -223,7 +235,11 @@ func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 		}
 		resolver.snapshot.Nodes.Store(node.UID, *node)
 		for _, nodeAddress := range node.Status.Addresses {
-			resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
+			resolver.storeWorkloadsIP(nodeAddress.Address, &Workload{
+				Name:      node.Name,
+				Namespace: "Node",
+				Kind:      "Node",
+			})
 		}
 	case watch.Deleted:
 		if val, ok := nodeEvent.Object.(*v1.Node); ok {
@@ -294,14 +310,18 @@ func (resolver *K8sIPResolver) handleServicesWatchEvent(servicesEvent *watch.Eve
 		resolver.snapshot.Services.Store(service.UID, *service)
 
 		// services has (potentially multiple) ClusterIP
-		name := service.Name + ":" + service.Namespace
+		workload := Workload{
+			Name:      service.Name,
+			Namespace: service.Namespace,
+			Kind:      "Service",
+		}
 
 		// TODO maybe try to match service to workload
 		for _, clusterIp := range service.Spec.ClusterIPs {
 			if clusterIp != "None" {
 				_, ok := resolver.ipsMap.Load(clusterIp)
 				if !ok {
-					resolver.ipsMap.Store(clusterIp, name)
+					resolver.storeWorkloadsIP(clusterIp, &workload)
 				}
 			}
 		}
@@ -438,12 +458,16 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 			return true // continue
 		}
 		// services has (potentially multiple) ClusterIP
-		name := service.Name + ":" + service.Namespace
+		workload := Workload{
+			Name:      service.Name,
+			Namespace: service.Namespace,
+			Kind:      "Service",
+		}
 
 		// TODO maybe try to match service to workload
 		for _, clusterIp := range service.Spec.ClusterIPs {
 			if clusterIp != "None" {
-				resolver.ipsMap.Store(clusterIp, name)
+				resolver.storeWorkloadsIP(clusterIp, &workload)
 			}
 		}
 		return true
@@ -455,14 +479,10 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 			log.Printf("Type confusion in pods map")
 			return true // continue
 		}
-		name := resolver.resolvePodName(&pod)
-		podPhase := pod.Status.Phase
+		entry := resolver.resolvePodDescriptor(&pod)
 		for _, podIp := range pod.Status.PodIPs {
 			// if ip is already in the map, override only if current pod is running
-			_, ok := resolver.ipsMap.Load(podIp.IP)
-			if !ok || podPhase == v1.PodRunning {
-				resolver.ipsMap.Store(podIp.IP, name)
-			}
+			resolver.storeWorkloadsIP(podIp.IP, &entry)
 		}
 		return true
 	})
@@ -474,13 +494,29 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 			return true // continue
 		}
 		for _, nodeAddress := range node.Status.Addresses {
-			resolver.ipsMap.Store(nodeAddress.Address, string(nodeAddress.Type)+"/"+node.Name+":INTERNAL")
+			workload := Workload{
+				Name:      node.Name,
+				Namespace: "Node",
+				Kind:      "Node",
+			}
+			resolver.storeWorkloadsIP(nodeAddress.Address, &workload)
 		}
 		return true
 	})
+}
 
-	// localhost
-	resolver.ipsMap.Store("0.0.0.0", "localhost")
+func (resolver *K8sIPResolver) storeWorkloadsIP(ip string, newWorkload *Workload) {
+	// we want to override existing workload, unless the existing workload is a node and the new one isn't
+	val, ok := resolver.ipsMap.Load(ip)
+	if ok {
+		existingWorkload, ok := val.(Workload)
+		if ok {
+			if existingWorkload.Kind == "Node" && newWorkload.Kind != "Node" {
+				return
+			}
+		}
+	}
+	resolver.ipsMap.Store(ip, *newWorkload)
 }
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
@@ -551,16 +587,23 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 	return nil, errors.New("Unsupported kind for lookup - " + originalOwner.Kind)
 }
 
-func (resolver *K8sIPResolver) resolvePodName(pod *v1.Pod) string {
-	name := pod.Name + ":" + pod.Namespace
+func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
+	name := pod.Name
+	namespace := pod.Namespace
+	kind := "pod"
 	owner := metav1.GetControllerOf(pod)
 	for owner != nil {
 		var err error
-		name = owner.Name + ":" + pod.Namespace
+		name = owner.Name
+		kind = owner.Kind
 		owner, err = resolver.getControllerOfOwner(&resolver.snapshot, owner)
 		if err != nil {
 			log.Printf("Error retreiving owner of %v - %v", name, err)
 		}
 	}
-	return name
+	return Workload{
+		Name:      name,
+		Namespace: namespace,
+		Kind:      kind,
+	}
 }
