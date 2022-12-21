@@ -341,9 +341,10 @@ func (resolver *K8sIPResolver) handleCronJobsWatchEvent(cronjobsEvent *watch.Eve
 func (resolver *K8sIPResolver) getResolvedClusterSnapshot() error {
 	err := resolver.getFullClusterSnapshot()
 	if err != nil {
-		resolver.updateIpMapping()
+		return err
 	}
-	return err
+	resolver.updateIpMapping()
+	return nil
 }
 
 // iterate the API for initial coverage of the cluster's state
