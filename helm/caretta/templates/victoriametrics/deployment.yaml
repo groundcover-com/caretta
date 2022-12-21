@@ -17,15 +17,14 @@ spec:
       serviceAccountName: caretta
       containers:
       - name: caretta-victoria
-        image: victoriametrics/victoria-metrics:latest
+        image: victoriametrics/victoria-metrics:v1.85.3
         args:
           - "--promscrape.config=/etc/prometheus/prometheus.yml"
           - "--loggerLevel=INFO"
-          - "--eula"
         volumeMounts:
         - name: caretta-prometheus-config-volume
           mountPath: /etc/prometheus
-        - name: caretta-vm-pvc
+        - name: caretta-vm-data
           mountPath: /victoria-metrics-data
         ports:
         - containerPort: 8428
@@ -35,5 +34,10 @@ spec:
         configMap:
           defaultMode: 420
           name: caretta-prometheus-config-volume
-      - name: caretta-vm-pvc
+      - name: caretta-vm-data
+        {{ if .Values.persistentStorage.enabled }}
+        persistentVolumeClaim:
+          claimName: caretta-vm-pvc
+        {{ else }}
         emptyDir: {}
+        {{ end }}

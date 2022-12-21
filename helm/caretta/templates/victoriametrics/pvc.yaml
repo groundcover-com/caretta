@@ -1,3 +1,4 @@
+{{ if .Values.persistentStorage.enabled }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -10,7 +11,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: "100Mi"
-  selector:
-    matchLabels:
-      app: "caretta-victoria"
+      storage: "50Mi"
+{{ end }}

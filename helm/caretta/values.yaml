@@ -3,3 +3,7 @@ enableDnsResolving: true
 prometheusPort: 7117
 prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
+
+persistentStorage:
+  enabled: false
+  size: 0
