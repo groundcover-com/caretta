@@ -1,7 +1,9 @@
-package caretta
+package caretta_test
 
 import (
 	"testing"
+
+	"github.com/groundcover-com/caretta/pkg/caretta"
 
 	"github.com/cilium/ebpf"
 	"github.com/groundcover-com/caretta/pkg/k8s"
@@ -25,18 +27,18 @@ func (resolver *MockResolver) StopWatching() {
 
 }
 
-func isLinkInMap(clientIp int, serverIp int, linksMap map[NetworkLink]uint64) bool {
+func isLinkInMap(clientIp int, serverIp int, linksMap map[caretta.NetworkLink]uint64) bool {
 	for link := range linksMap {
-		if link.Client.Name == IP(clientIp).String() && link.Server.Name == IP(serverIp).String() {
+		if link.Client.Name == caretta.IP(clientIp).String() && link.Server.Name == caretta.IP(serverIp).String() {
 			return true
 		}
 	}
 	return false
 }
 
-func getThroughputFromMap(clientIp int, serverIp int, linksMap map[NetworkLink]uint64) uint64 {
+func getThroughputFromMap(clientIp int, serverIp int, linksMap map[caretta.NetworkLink]uint64) uint64 {
 	for link, throughput := range linksMap {
-		if link.Client.Name == IP(clientIp).String() && link.Server.Name == IP(serverIp).String() {
+		if link.Client.Name == caretta.IP(clientIp).String() && link.Server.Name == caretta.IP(serverIp).String() {
 			return throughput
 		}
 	}
@@ -57,10 +59,10 @@ func TestAggregationClient(t *testing.T) {
 
 	clientIp := 1
 	serverIp := 2
-	conn1 := ConnectionIdentifier{
+	conn1 := caretta.ConnectionIdentifier{
 		Id:  1,
 		Pid: 1,
-		Tuple: ConnectionTuple{
+		Tuple: caretta.ConnectionTuple{
 			SrcIp:   uint32(clientIp),
 			DstIp:   uint32(serverIp),
 			SrcPort: 55555,
@@ -68,20 +70,16 @@ func TestAggregationClient(t *testing.T) {
 		},
 		Role: 1,
 	}
-	throughput1 := ConnectionThroughputStats{
+	throughput1 := caretta.ConnectionThroughputStats{
 		BytesSent:     10,
 		BytesReceived: 0,
 		IsActive:      1,
 	}
 	m.Update(conn1, throughput1, ebpf.UpdateAny)
 
-	tracer := LinksTracer{
-		ebpfObjects: nil,
-		connections: m,
-		resolver:    &MockResolver{},
-	}
+	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
-	pastLinks := make(map[NetworkLink]uint64)
+	pastLinks := make(map[caretta.NetworkLink]uint64)
 
 	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
 	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
@@ -102,31 +100,27 @@ func TestAggregationServer(t *testing.T) {
 
 	clientIp := 1
 	serverIp := 2
-	conn1 := ConnectionIdentifier{
+	conn1 := caretta.ConnectionIdentifier{
 		Id:  1,
 		Pid: 1,
-		Tuple: ConnectionTuple{
+		Tuple: caretta.ConnectionTuple{
 			SrcIp:   uint32(serverIp),
 			DstIp:   uint32(clientIp),
 			SrcPort: 80,
 			DstPort: 55555,
 		},
-		Role: ServerConnectionRole,
+		Role: caretta.ServerConnectionRole,
 	}
-	throughput1 := ConnectionThroughputStats{
+	throughput1 := caretta.ConnectionThroughputStats{
 		BytesSent:     10,
 		BytesReceived: 0,
 		IsActive:      1,
 	}
 	m.Update(conn1, throughput1, ebpf.UpdateAny)
 
-	tracer := LinksTracer{
-		ebpfObjects: nil,
-		connections: m,
-		resolver:    &MockResolver{},
-	}
+	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
-	pastLinks := make(map[NetworkLink]uint64)
+	pastLinks := make(map[caretta.NetworkLink]uint64)
 
 	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
 	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
@@ -151,31 +145,27 @@ func TestAggregationInactive(t *testing.T) {
 	inactiveThroughputSIze := 20
 	thirdThroughputSize := 15
 
-	conn1 := ConnectionIdentifier{
+	conn1 := caretta.ConnectionIdentifier{
 		Id:  1,
 		Pid: 1,
-		Tuple: ConnectionTuple{
+		Tuple: caretta.ConnectionTuple{
 			SrcIp:   uint32(serverIp),
 			DstIp:   uint32(clientIp),
 			SrcPort: 80,
 			DstPort: 55555,
 		},
-		Role: ServerConnectionRole,
+		Role: caretta.ServerConnectionRole,
 	}
-	throughput1 := ConnectionThroughputStats{
+	throughput1 := caretta.ConnectionThroughputStats{
 		BytesSent:     uint64(firstThroughputSize),
 		BytesReceived: 0,
 		IsActive:      1,
 	}
 	m.Update(conn1, throughput1, ebpf.UpdateAny)
 
-	tracer := LinksTracer{
-		ebpfObjects: nil,
-		connections: m,
-		resolver:    &MockResolver{},
-	}
+	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
-	pastLinks := make(map[NetworkLink]uint64)
+	pastLinks := make(map[caretta.NetworkLink]uint64)
 
 	pastLinks, currentLinks := tracer.TracesPollingIteration(pastLinks)
 	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
@@ -183,12 +173,12 @@ func TestAggregationInactive(t *testing.T) {
 
 	// make sure connection is still in map
 
-	var resultThroughput ConnectionThroughputStats
+	var resultThroughput caretta.ConnectionThroughputStats
 	err = m.Lookup(&conn1, &resultThroughput)
 	assert.NoError(err)
 
 	// update the throughput so the connection is inactive
-	throughput2 := ConnectionThroughputStats{
+	throughput2 := caretta.ConnectionThroughputStats{
 		BytesSent:     uint64(inactiveThroughputSIze),
 		BytesReceived: 0,
 		IsActive:      0,
@@ -204,7 +194,7 @@ func TestAggregationInactive(t *testing.T) {
 	assert.Error(err)
 
 	// new connection, same link
-	throughput3 := ConnectionThroughputStats{
+	throughput3 := caretta.ConnectionThroughputStats{
 		BytesSent:     uint64(thirdThroughputSize),
 		BytesReceived: 0,
 		IsActive:      1,
