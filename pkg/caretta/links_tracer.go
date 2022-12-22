@@ -58,9 +58,12 @@ func NewTracer(resolver *k8s.K8sIPResolver) LinksTracer {
 
 func (tracer *LinksTracer) Start() error {
 	objs, connMap, err := tracing.LoadProbes()
+	if err != nil {
+		return err
+	}
 	tracer.ebpfObjects = &objs
 	tracer.connections = connMap
-	return err
+	return nil
 }
 
 func (tracer *LinksTracer) Stop() error {
