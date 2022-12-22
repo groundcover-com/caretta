@@ -41,7 +41,7 @@ type workloadResourceDescriptor struct {
 	Kind      string
 }
 
-func (desc *workloadResourceDescriptor) CrateObject() runtime.Object {
+func (desc *workloadResourceDescriptor) CreateObject() runtime.Object {
 	switch desc.Kind {
 	case "Deployment":
 		{
@@ -147,7 +147,7 @@ func generateClusterObjects(pods []podDescriptor, workloadsResources []workloadR
 		result = append(result, &newPod)
 	}
 	for _, desc := range workloadsResources {
-		result = append(result, desc.CrateObject())
+		result = append(result, desc.CreateObject())
 	}
 	for _, node := range nodes {
 		result = append(result, &v1.Node{
