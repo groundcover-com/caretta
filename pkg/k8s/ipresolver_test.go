@@ -1,8 +1,10 @@
-package k8s
+package k8s_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/groundcover-com/caretta/pkg/k8s"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -166,47 +168,6 @@ func generateClusterObjects(pods []podDescriptor, workloadsResources []workloadR
 	return result
 }
 
-func isObjectInSnapshot(desc *workloadResourceDescriptor, snapshot *clusterSnapshot) bool {
-	switch desc.Kind {
-	case "Deployment":
-		{
-			_, ok := snapshot.Deployments.Load(desc.UID)
-			return ok
-		}
-	case "ReplicaSet":
-		{
-			_, ok := snapshot.ReplicaSets.Load(desc.UID)
-			return ok
-		}
-	case "DaemonSet":
-		{
-			_, ok := snapshot.DaemonSets.Load(desc.UID)
-			return ok
-		}
-	case "StatefulSet":
-		{
-			_, ok := snapshot.StatefulSets.Load(desc.UID)
-			return ok
-		}
-	case "Job":
-		{
-			_, ok := snapshot.Jobs.Load(desc.UID)
-			return ok
-		}
-	case "Service":
-		{
-			_, ok := snapshot.Services.Load(desc.UID)
-			return ok
-		}
-	case "CronJob":
-		{
-			_, ok := snapshot.CronJobs.Load(desc.UID)
-			return ok
-		}
-	}
-	return false
-}
-
 func TestInitialSnapshot(t *testing.T) {
 	assert := assert.New(t)
 	// create mocks
@@ -225,33 +186,16 @@ func TestInitialSnapshot(t *testing.T) {
 	clusterObjs := generateClusterObjects(pods, workloadResources, nodes)
 	fakeClient := testclient.NewSimpleClientset(clusterObjs...)
 
-	resolver, err := NewK8sIPResolver(fakeClient, false)
+	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
 	if err != nil {
 		t.Fatalf("Error creating resolver %v", err)
 	}
 
 	// call the tested function
-	err = resolver.getResolvedClusterSnapshot()
+	err = resolver.StartWatching()
 	if err != nil {
-		t.Fatalf("Error in getResolvedClusterSnapshot")
+		t.Fatalf("Error in StartWatching")
 	}
-
-	failed := false
-	// check snapshot contains all generated objects
-	for _, generatedPod := range pods {
-		_, ok := resolver.snapshot.Pods.Load(generatedPod.UID)
-		if !ok {
-			t.Errorf("Pod not in snapshot %v", generatedPod.Name)
-			failed = true
-		}
-	}
-	for _, obj := range workloadResources {
-		if !isObjectInSnapshot(&obj, &resolver.snapshot) {
-			t.Errorf("Object not in snapshot %v", obj.Name)
-			failed = true
-		}
-	}
-	assert.False(failed, "Objects not found in snapshot")
 
 	for _, pod := range pods {
 		workload := resolver.ResolveIP(pod.IP)
@@ -282,7 +226,7 @@ func TestWatchersAddModify(t *testing.T) {
 	fakeWatch := watch.NewFake()
 	fakeClient.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fakeWatch, nil))
 
-	resolver, err := NewK8sIPResolver(fakeClient, false)
+	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
 	if err != nil {
 		t.Fatalf("Error creating resolver %v", err)
 	}
@@ -290,10 +234,6 @@ func TestWatchersAddModify(t *testing.T) {
 	err = resolver.StartWatching()
 	if err != nil {
 		t.Fatalf("Error in StartWatching")
-	}
-	err = resolver.getResolvedClusterSnapshot()
-	if err != nil {
-		t.Fatalf("Error in getResolvedClusterSnapshot")
 	}
 
 	newPods := []podDescriptor{
@@ -305,22 +245,14 @@ func TestWatchersAddModify(t *testing.T) {
 	fakeWatch.Add(newObjs[0])
 	fakeWatch.Add(newObjs[1])
 
-	failed := false
-	for _, pod := range newPods {
-		_, ok := resolver.snapshot.Pods.Load(pod.UID)
-		if !ok {
-			t.Errorf("Pod %v not found", pod.Name)
-			failed = true
-		}
-	}
-	assert.False(failed, "Object not found in snapshot")
-
 	// assign IPs
 	newPods[0].IP = "1.1.1.4"
 	newPods[1].IP = "1.1.2.1"
 	modifiedObjs := generateClusterObjects(newPods, []workloadResourceDescriptor{}, []nodeDescriptor{})
 	fakeWatch.Modify(modifiedObjs[0])
 	fakeWatch.Modify(modifiedObjs[1])
+
+	time.Sleep(1 * time.Second)
 
 	for _, pod := range newPods {
 		workload := resolver.ResolveIP(pod.IP)
@@ -351,7 +283,7 @@ func TestWatchOverride(t *testing.T) {
 	fakeWatch := watch.NewFake()
 	fakeClient.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fakeWatch, nil))
 
-	resolver, err := NewK8sIPResolver(fakeClient, false)
+	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
 	if err != nil {
 		t.Fatalf("Error creating resolver %v", err)
 	}
@@ -360,19 +292,14 @@ func TestWatchOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error in StartWatching")
 	}
-	err = resolver.getResolvedClusterSnapshot()
-	if err != nil {
-		t.Fatalf("Error in getResolvedClusterSnapshot")
-	}
 
-	t.Log(resolver.ResolveIP("1.1.1.2"))
 	newPods := []podDescriptor{
 		{"pod4", "namespaceA", "1.1.1.2", v1.PodRunning, types.UID(uuid.NewString()), nil},
 	}
 	newObjs := generateClusterObjects(newPods, []workloadResourceDescriptor{}, []nodeDescriptor{})
 
 	fakeWatch.Add(newObjs[0])
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	workload := resolver.ResolveIP(newPods[0].IP)
 	assert.Equal(newPods[0].Name, workload.Name, "Incorrect IP resolving")
 	assert.Equal(newPods[0].Namespace, workload.Namespace, "Incorrect IP resolving")
@@ -401,7 +328,7 @@ func TestWatchOverrideNode(t *testing.T) {
 	fakeClient.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fakePodsWatch, nil))
 	fakeClient.PrependWatchReactor("nodes", k8stesting.DefaultWatchReactor(fakeNodesWatch, nil))
 
-	resolver, err := NewK8sIPResolver(fakeClient, false)
+	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
 	if err != nil {
 		t.Fatalf("Error creating resolver %v", err)
 	}
@@ -409,10 +336,6 @@ func TestWatchOverrideNode(t *testing.T) {
 	err = resolver.StartWatching()
 	if err != nil {
 		t.Fatalf("Error in StartWatching")
-	}
-	err = resolver.getResolvedClusterSnapshot()
-	if err != nil {
-		t.Fatalf("Error in getResolvedClusterSnapshot")
 	}
 
 	// pod releases its IP
@@ -422,7 +345,7 @@ func TestWatchOverrideNode(t *testing.T) {
 	modifiedPod.IP = ip2
 	fakePodsWatch.Modify(generateClusterObjects([]podDescriptor{modifiedPod}, []workloadResourceDescriptor{}, []nodeDescriptor{})[0])
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	workload := resolver.ResolveIP(ip2)
 	assert.Equal(modifiedPod.Name, workload.Name, "Incorrect IP resolving")
@@ -433,7 +356,7 @@ func TestWatchOverrideNode(t *testing.T) {
 	newNode := nodeDescriptor{"Node2", ip1, types.UID(uuid.NewString())}
 	fakeNodesWatch.Add(generateClusterObjects([]podDescriptor{}, []workloadResourceDescriptor{}, []nodeDescriptor{newNode})[0])
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	workload = resolver.ResolveIP(ip1)
 	assert.Equal(newNode.Name, workload.Name, "Incorrect IP resolving")
@@ -443,7 +366,7 @@ func TestWatchOverrideNode(t *testing.T) {
 	newPod := podDescriptor{"pod6", "namespaceC", ip1, v1.PodRunning, types.UID(uuid.NewString()), nil}
 	fakePodsWatch.Add(generateClusterObjects([]podDescriptor{newPod}, []workloadResourceDescriptor{}, []nodeDescriptor{})[0])
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	workload = resolver.ResolveIP(ip1)
 	assert.Equal(newNode.Name, workload.Name, "Incorrect IP resolving")
@@ -472,15 +395,15 @@ func TestPodNameResolving(t *testing.T) {
 	clusterObjs := generateClusterObjects(pods, workloadResources, nodes)
 	fakeClient := testclient.NewSimpleClientset(clusterObjs...)
 
-	resolver, err := NewK8sIPResolver(fakeClient, false)
+	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
 	if err != nil {
 		t.Fatalf("Error creating resolver %v", err)
 	}
 
 	// call the tested function
-	err = resolver.getResolvedClusterSnapshot()
+	err = resolver.StartWatching()
 	if err != nil {
-		t.Fatalf("Error in getResolvedClusterSnapshot")
+		t.Fatalf("Error in StartWatching")
 	}
 
 	t.Log(resolver.ResolveIP(pods[0].IP)) // TODO change to compare, should be deployment1
