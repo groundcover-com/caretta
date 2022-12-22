@@ -229,6 +229,8 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 	switch nodeEvent.Type {
 	case watch.Added:
+		fallthrough
+	case watch.Modified:
 		node, ok := nodeEvent.Object.(*v1.Node)
 		if !ok {
 			return
