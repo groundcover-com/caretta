@@ -16,7 +16,7 @@ data:
       # <string> custom UID which can be used to reference this datasource in other parts of the configuration, if not specified will be generated automatically
       uid: 
       # <string> url
-      url: http://prometheus:9090
+      url: http://victoria:8428
       # <string> database user, if used
       user:
       # <string> database name, if used

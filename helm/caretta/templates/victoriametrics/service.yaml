@@ -2,15 +2,15 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    app: caretta-prom
-  name: prometheus
+    app: caretta-victoria
+  name: victoria
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
   - name: http-prom
-    port: 9090
+    port: 8428
     protocol: TCP
     targetPort: http-prom
   selector:
-    app: caretta-prom
+    app: caretta-victoria
   type: ClusterIP
