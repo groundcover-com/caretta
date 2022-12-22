@@ -785,7 +785,6 @@ func TestResolving(t *testing.T) {
 }
 
 func TestControllersResolving(t *testing.T) {
-
 	var controllersTests = []testScenario{
 		{
 			description: "initial snapshot 1 pod controlled by delpoyment resolve to deployment",
