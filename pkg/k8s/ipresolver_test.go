@@ -331,11 +331,6 @@ func TestResolving(t *testing.T) {
 				newPods: []podDescriptor{
 					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.New().String()), nil},
 				},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "pod1",
@@ -349,7 +344,6 @@ func TestResolving(t *testing.T) {
 					},
 				},
 			},
-			updateSteps: []testStep{},
 		},
 		{
 			description: "initial snapshot 3 pods",
@@ -360,11 +354,6 @@ func TestResolving(t *testing.T) {
 					{"pod2", "namespaceA", "1.1.1.2", v1.PodRunning, types.UID(uuid.New().String()), nil},
 					{"pod3", "namespaceA", "1.1.1.3", v1.PodRunning, types.UID(uuid.New().String()), nil},
 				},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "pod1",
@@ -383,18 +372,11 @@ func TestResolving(t *testing.T) {
 					},
 				},
 			},
-			updateSteps: []testStep{},
 		},
 		{
 			description: "empty initial 1 pod added",
 			initialState: testStep{
-				shouldWait:                false,
-				newPods:                   []podDescriptor{},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
+				shouldWait: false,
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "1.1.1.1",
@@ -409,11 +391,6 @@ func TestResolving(t *testing.T) {
 					newPods: []podDescriptor{
 						{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.New().String()), nil},
 					},
-					newNodes:                  []nodeDescriptor{},
-					newWorkloadResource:       []workloadResourceDescriptor{},
-					modifiedPods:              []podDescriptor{},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.1": {
 							Name:      "pod1",
@@ -427,13 +404,7 @@ func TestResolving(t *testing.T) {
 		{
 			description: "empty initial 1 node added",
 			initialState: testStep{
-				shouldWait:                false,
-				newPods:                   []podDescriptor{},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
+				shouldWait: false,
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.0": {
 						Name:      "1.1.1.0",
@@ -445,14 +416,9 @@ func TestResolving(t *testing.T) {
 			updateSteps: []testStep{
 				{
 					shouldWait: true,
-					newPods:    []podDescriptor{},
 					newNodes: []nodeDescriptor{
 						{"Node1", "1.1.1.0", types.UID(uuid.NewString())},
 					},
-					newWorkloadResource:       []workloadResourceDescriptor{},
-					modifiedPods:              []podDescriptor{},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node1",
@@ -466,13 +432,7 @@ func TestResolving(t *testing.T) {
 		{
 			description: "empty initial 1 node, 1 pod added",
 			initialState: testStep{
-				shouldWait:                false,
-				newPods:                   []podDescriptor{},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
+				shouldWait: false,
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.0": {
 						Name:      "1.1.1.0",
@@ -490,10 +450,6 @@ func TestResolving(t *testing.T) {
 					newNodes: []nodeDescriptor{
 						{"Node1", "1.1.1.0", types.UID(uuid.NewString())},
 					},
-					newWorkloadResource:       []workloadResourceDescriptor{},
-					modifiedPods:              []podDescriptor{},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node1",
@@ -516,11 +472,6 @@ func TestResolving(t *testing.T) {
 				newPods: []podDescriptor{
 					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.New().String()), nil},
 				},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "pod1",
@@ -536,15 +487,10 @@ func TestResolving(t *testing.T) {
 			},
 			updateSteps: []testStep{
 				{
-					shouldWait:          true,
-					newPods:             []podDescriptor{},
-					newNodes:            []nodeDescriptor{},
-					newWorkloadResource: []workloadResourceDescriptor{},
+					shouldWait: true,
 					modifiedPods: []podDescriptor{
 						{"pod1", "namespaceA", "1.1.1.2", v1.PodRunning, types.UID(uuid.New().String()), nil},
 					},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.1": { // the resolver shouldn't delete old not-reused entries
 							Name:      "pod1",
@@ -567,11 +513,6 @@ func TestResolving(t *testing.T) {
 				newPods: []podDescriptor{
 					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID("1"), nil},
 				},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "pod1",
@@ -587,27 +528,17 @@ func TestResolving(t *testing.T) {
 			},
 			updateSteps: []testStep{
 				{
-					shouldWait:          false,
-					newPods:             []podDescriptor{},
-					newNodes:            []nodeDescriptor{},
-					newWorkloadResource: []workloadResourceDescriptor{},
+					shouldWait: false,
 					modifiedPods: []podDescriptor{
 						{"pod1", "namespaceA", "1.1.1.2", v1.PodRunning, types.UID("1"), nil},
 					},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
-					expectedResolves:          map[string]k8s.Workload{},
+					expectedResolves: map[string]k8s.Workload{},
 				},
 				{
 					shouldWait: true,
 					newPods: []podDescriptor{
 						{"pod2", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.New().String()), nil},
 					},
-					newNodes:                  []nodeDescriptor{},
-					newWorkloadResource:       []workloadResourceDescriptor{},
-					modifiedPods:              []podDescriptor{},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.1": {
 							Name:      "pod2",
@@ -630,11 +561,6 @@ func TestResolving(t *testing.T) {
 				newPods: []podDescriptor{
 					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID("1"), nil},
 				},
-				newNodes:                  []nodeDescriptor{},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "pod1",
@@ -650,27 +576,17 @@ func TestResolving(t *testing.T) {
 			},
 			updateSteps: []testStep{
 				{
-					shouldWait:          false,
-					newPods:             []podDescriptor{},
-					newNodes:            []nodeDescriptor{},
-					newWorkloadResource: []workloadResourceDescriptor{},
+					shouldWait: false,
 					modifiedPods: []podDescriptor{
 						{"pod1", "namespaceA", "1.1.1.2", v1.PodRunning, types.UID("1"), nil},
 					},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
-					expectedResolves:          map[string]k8s.Workload{},
+					expectedResolves: map[string]k8s.Workload{},
 				},
 				{
 					shouldWait: true,
-					newPods:    []podDescriptor{},
 					newNodes: []nodeDescriptor{
 						{"Node1", "1.1.1.1", types.UID(uuid.NewString())},
 					},
-					newWorkloadResource:       []workloadResourceDescriptor{},
-					modifiedPods:              []podDescriptor{},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.1": {
 							Name:      "Node1",
@@ -694,19 +610,11 @@ func TestResolving(t *testing.T) {
 				newNodes: []nodeDescriptor{
 					{"Node1", "1.1.1.0", types.UID("1")},
 				},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
-				expectedResolves:          map[string]k8s.Workload{},
+				expectedResolves: map[string]k8s.Workload{},
 			},
 			updateSteps: []testStep{
 				{
-					shouldWait:          true,
-					newPods:             []podDescriptor{},
-					newNodes:            []nodeDescriptor{},
-					newWorkloadResource: []workloadResourceDescriptor{},
-					modifiedPods:        []podDescriptor{},
+					shouldWait: true,
 					modifiedNodes: []nodeDescriptor{
 						{"Node1", "1.1.2.0", types.UID("1")},
 					},
@@ -730,41 +638,27 @@ func TestResolving(t *testing.T) {
 			description: "1 node changing ip, reused by another node",
 			initialState: testStep{
 				shouldWait: true,
-				newPods:    []podDescriptor{},
 				newNodes: []nodeDescriptor{
 					{"Node1", "1.1.1.0", types.UID("1")},
 				},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
-				expectedResolves:          map[string]k8s.Workload{},
+				expectedResolves: map[string]k8s.Workload{},
 			},
 			updateSteps: []testStep{
 				{
-					shouldWait:          true,
-					newPods:             []podDescriptor{},
-					newNodes:            []nodeDescriptor{},
-					newWorkloadResource: []workloadResourceDescriptor{},
-					modifiedPods:        []podDescriptor{},
+					shouldWait: true,
 					modifiedNodes: []nodeDescriptor{
 						{"Node1", "1.1.2.0", types.UID("1")},
 					},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
-					expectedResolves:          map[string]k8s.Workload{},
+					expectedResolves: map[string]k8s.Workload{},
 				},
 				{
 					shouldWait: true,
-					newPods:    []podDescriptor{},
 					newNodes: []nodeDescriptor{
 						{"Node2", "1.1.1.0", types.UID("2")},
 					},
-					newWorkloadResource: []workloadResourceDescriptor{},
-					modifiedPods:        []podDescriptor{},
 					modifiedNodes: []nodeDescriptor{
 						{"Node1", "1.1.2.0", types.UID("1")},
 					},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node2",
@@ -784,15 +678,10 @@ func TestResolving(t *testing.T) {
 			description: "pod with hostip wont override node",
 			initialState: testStep{
 				shouldWait: false,
-				newPods:    []podDescriptor{},
 				newNodes: []nodeDescriptor{
 					{"Node1", "1.1.1.0", types.UID(uuid.NewString())},
 				},
-				newWorkloadResource:       []workloadResourceDescriptor{},
-				modifiedPods:              []podDescriptor{},
-				modifiedNodes:             []nodeDescriptor{},
-				modifiedWorkloadResources: []workloadResourceDescriptor{},
-				expectedResolves:          map[string]k8s.Workload{},
+				expectedResolves: map[string]k8s.Workload{},
 			},
 			updateSteps: []testStep{
 				{
@@ -800,11 +689,6 @@ func TestResolving(t *testing.T) {
 					newPods: []podDescriptor{
 						{"pod1", "namespaceA", "1.1.1.0", v1.PodRunning, types.UID(uuid.New().String()), nil},
 					},
-					newNodes:                  []nodeDescriptor{},
-					newWorkloadResource:       []workloadResourceDescriptor{},
-					modifiedPods:              []podDescriptor{},
-					modifiedNodes:             []nodeDescriptor{},
-					modifiedWorkloadResources: []workloadResourceDescriptor{},
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node1",
