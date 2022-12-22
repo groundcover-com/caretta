@@ -101,7 +101,7 @@ var serverLink = caretta.NetworkLink{
 func TestAggregations(t *testing.T) {
 	var aggregationTests = []aggregationTest{
 		{
-			description: "single client connection",
+			description: "single client connection create correct link",
 			connections: []testConnection{
 				{
 					connId: caretta.ConnectionIdentifier{
@@ -117,7 +117,7 @@ func TestAggregations(t *testing.T) {
 			expectedThroughput: activeThroughput.BytesSent,
 		},
 		{
-			description: "single server connection",
+			description: "single server connection create correct link",
 			connections: []testConnection{
 				{
 					connId: caretta.ConnectionIdentifier{
@@ -133,7 +133,7 @@ func TestAggregations(t *testing.T) {
 			expectedThroughput: activeThroughput.BytesSent,
 		},
 		{
-			description: "2 client connections",
+			description: "2 client connections aggregate both to one",
 			connections: []testConnection{
 				{
 					connId: caretta.ConnectionIdentifier{
@@ -158,7 +158,7 @@ func TestAggregations(t *testing.T) {
 			expectedThroughput: 2 * activeThroughput.BytesSent,
 		},
 		{
-			description: "2 server connections",
+			description: "2 server connections aggregate both to one",
 			connections: []testConnection{
 				{
 					connId: caretta.ConnectionIdentifier{
@@ -183,7 +183,7 @@ func TestAggregations(t *testing.T) {
 			expectedThroughput: 2 * activeThroughput.BytesSent,
 		},
 		{
-			description: "3 active client connections, 2 inactive",
+			description: "3 active client connections, 2 inactive aggregate all to one",
 			connections: []testConnection{
 				{
 					connId: caretta.ConnectionIdentifier{
@@ -235,7 +235,7 @@ func TestAggregations(t *testing.T) {
 			expectedThroughput: 3*activeThroughput.BytesSent + 2*inactiveThroughput.BytesSent,
 		},
 		{
-			description: "3 active server connections, 2 inactive",
+			description: "3 active server connections, 2 inactive aggregate all to one",
 			connections: []testConnection{
 				{
 					connId: caretta.ConnectionIdentifier{
