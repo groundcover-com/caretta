@@ -322,10 +322,33 @@ func modifyObject(watchers fakeWatchers, obj runtime.Object, kind string) {
 	}
 }
 
+var testDeployment = workloadResourceDescriptor{"deployment1", "namespaceA", types.UID(uuid.NewString()), "Deployment"}
+var testReplicaSet = workloadResourceDescriptor{"replicaset1", "namespaceA", types.UID(uuid.NewString()), "ReplicaSet"}
+var testDaemonSet = workloadResourceDescriptor{"daemonset1", "namespaceA", types.UID(uuid.NewString()), "DaemonSet"}
+var testStatefulSet = workloadResourceDescriptor{"statefulset1", "namespaceA", types.UID(uuid.NewString()), "StatefulSet"}
+var testJob = workloadResourceDescriptor{"job1", "namespaceA", types.UID(uuid.NewString()), "Job"}
+var testCronjob = workloadResourceDescriptor{"cronjob1", "namespaceA", types.UID(uuid.NewString()), "CronJob"}
+
 func TestResolving(t *testing.T) {
 	var tests = []test{
 		{
-			description: "initial snapshot 1 pod",
+			description: "unsuccessful resolving result should be external",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.New().String()), nil},
+				},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.2": {
+						Name:      "1.1.1.2",
+						Namespace: "External",
+						Kind:      "External",
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod resolve to pod1",
 			initialState: testStep{
 				shouldWait: false,
 				newPods: []podDescriptor{
@@ -337,16 +360,11 @@ func TestResolving(t *testing.T) {
 						Namespace: "namespaceA",
 						Kind:      "pod",
 					},
-					"1.1.1.2": {
-						Name:      "1.1.1.2",
-						Namespace: "External",
-						Kind:      "External",
-					},
 				},
 			},
 		},
 		{
-			description: "initial snapshot 3 pods",
+			description: "initial snapshot 3 pods resolve to each pod",
 			initialState: testStep{
 				shouldWait: false,
 				newPods: []podDescriptor{
@@ -374,7 +392,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "empty initial 1 pod added",
+			description: "empty initial 1 pod added resolve to pod",
 			initialState: testStep{
 				shouldWait: false,
 				expectedResolves: map[string]k8s.Workload{
@@ -402,7 +420,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "empty initial 1 node added",
+			description: "empty initial 1 node added resolve to node",
 			initialState: testStep{
 				shouldWait: false,
 				expectedResolves: map[string]k8s.Workload{
@@ -430,7 +448,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "empty initial 1 node, 1 pod added",
+			description: "empty initial 1 node, 1 pod added resolve to each",
 			initialState: testStep{
 				shouldWait: false,
 				expectedResolves: map[string]k8s.Workload{
@@ -466,7 +484,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "1 pod changing ip",
+			description: "1 pod changing ip resolve both ips to pod",
 			initialState: testStep{
 				shouldWait: false,
 				newPods: []podDescriptor{
@@ -507,7 +525,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "1 pod changing ip old ip is reused",
+			description: "1 pod changing ip old ip is reused resolve reused ip to new pod",
 			initialState: testStep{
 				shouldWait: false,
 				newPods: []podDescriptor{
@@ -555,7 +573,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "1 pod changing ip old ip is reused by node",
+			description: "1 pod changing ip old ip is reused by node resolve ip to new node",
 			initialState: testStep{
 				shouldWait: false,
 				newPods: []podDescriptor{
@@ -603,7 +621,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "1 node changing ip",
+			description: "1 node changing ip resolve both ips to node",
 			initialState: testStep{
 				shouldWait: false,
 				newPods:    []podDescriptor{},
@@ -635,7 +653,7 @@ func TestResolving(t *testing.T) {
 			},
 		},
 		{
-			description: "1 node changing ip, reused by another node",
+			description: "1 node changing ip, reused by another node resolve reused ip to new node",
 			initialState: testStep{
 				shouldWait: true,
 				newNodes: []nodeDescriptor{
@@ -695,6 +713,108 @@ func TestResolving(t *testing.T) {
 							Namespace: "Node",
 							Kind:      "Node",
 						},
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod controlled by delpoyment resolve to deployment",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.NewString()), &testDeployment},
+				},
+				newWorkloadResource: []workloadResourceDescriptor{testDeployment},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.1": {
+						Name:      testDeployment.Name,
+						Namespace: testDeployment.Namespace,
+						Kind:      testDeployment.Kind,
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod controlled by replicaset resolve to replicaset",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.NewString()), &testReplicaSet},
+				},
+				newWorkloadResource: []workloadResourceDescriptor{testReplicaSet},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.1": {
+						Name:      testReplicaSet.Name,
+						Namespace: testReplicaSet.Namespace,
+						Kind:      testReplicaSet.Kind,
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod controlled by daemonset resolve to daemonset",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.NewString()), &testDaemonSet},
+				},
+				newWorkloadResource: []workloadResourceDescriptor{testDaemonSet},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.1": {
+						Name:      testDaemonSet.Name,
+						Namespace: testDaemonSet.Namespace,
+						Kind:      testDaemonSet.Kind,
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod controlled by statefulset resolve to statefulset",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.NewString()), &testStatefulSet},
+				},
+				newWorkloadResource: []workloadResourceDescriptor{testStatefulSet},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.1": {
+						Name:      testStatefulSet.Name,
+						Namespace: testStatefulSet.Namespace,
+						Kind:      testStatefulSet.Kind,
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod controlled by job resolve to job",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.NewString()), &testJob},
+				},
+				newWorkloadResource: []workloadResourceDescriptor{testJob},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.1": {
+						Name:      testJob.Name,
+						Namespace: testJob.Namespace,
+						Kind:      testJob.Kind,
+					},
+				},
+			},
+		},
+		{
+			description: "initial snapshot 1 pod controlled by cronjob resolve to cronjob",
+			initialState: testStep{
+				shouldWait: false,
+				newPods: []podDescriptor{
+					{"pod1", "namespaceA", "1.1.1.1", v1.PodRunning, types.UID(uuid.NewString()), &testCronjob},
+				},
+				newWorkloadResource: []workloadResourceDescriptor{testCronjob},
+				expectedResolves: map[string]k8s.Workload{
+					"1.1.1.1": {
+						Name:      testCronjob.Name,
+						Namespace: testCronjob.Namespace,
+						Kind:      testCronjob.Kind,
 					},
 				},
 			},
@@ -760,44 +880,4 @@ func TestResolving(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestPodNameResolving(t *testing.T) {
-	assert := assert.New(t)
-	workloadResources := []workloadResourceDescriptor{
-		{"deployment1", "namespaceA", types.UID(uuid.NewString()), "Deployment"},
-		{"replicaset1", "namespaceB", types.UID(uuid.NewString()), "ReplicaSet"},
-	}
-	pods := []podDescriptor{
-		{
-			Name:       "pod1",
-			Namespace:  "namespaceA",
-			IP:         "1.1.1.1",
-			Phase:      v1.PodRunning,
-			UID:        types.UID(uuid.NewString()),
-			Controller: &workloadResources[0],
-		},
-	}
-	nodes := []nodeDescriptor{
-		{"Node1", "1.1.1.0", types.UID(uuid.NewString())},
-	}
-	clusterObjs := generateClusterObjects(pods, workloadResources, nodes)
-	fakeClient := testclient.NewSimpleClientset(clusterObjs...)
-
-	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
-	if err != nil {
-		t.Fatalf("Error creating resolver %v", err)
-	}
-
-	// call the tested function
-	err = resolver.StartWatching()
-	if err != nil {
-		t.Fatalf("Error in StartWatching")
-	}
-
-	t.Log(resolver.ResolveIP(pods[0].IP)) // TODO change to compare, should be deployment1
-	workload := resolver.ResolveIP(pods[0].IP)
-	assert.Equal(workloadResources[0].Name, workload.Name, "Incorrect IP resolving")
-	assert.Equal(workloadResources[0].Namespace, workload.Namespace, "Incorrect IP resolving")
-	assert.Equal(workloadResources[0].Kind, workload.Kind, "Incorrect IP resolving")
 }
