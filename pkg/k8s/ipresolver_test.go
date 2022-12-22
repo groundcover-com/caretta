@@ -194,7 +194,7 @@ type testStep struct {
 	expectedResolves          map[string]k8s.Workload
 }
 
-type test struct {
+type testScenario struct {
 	description  string
 	initialState testStep
 	updateSteps  []testStep
@@ -322,6 +322,65 @@ func modifyObject(watchers fakeWatchers, obj runtime.Object, kind string) {
 	}
 }
 
+func runTest(t *testing.T, test testScenario) {
+	assert := assert.New(t)
+	// Arrange 1: mocks and initial state
+	originalObjs := generateClusterObjects(test.initialState.newPods, test.initialState.newWorkloadResource, test.initialState.newNodes)
+	fakeClient := testclient.NewSimpleClientset(originalObjs...)
+	fakeWatchers := createPrependWatchers(fakeClient)
+
+	resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
+	assert.NoError(err)
+
+	// Act 1: process initial state
+	err = resolver.StartWatching()
+	assert.NoError(err)
+
+	// Assert 1: resolve and compare to expected, original state
+	for ipToCheck, expectedWorkload := range test.initialState.expectedResolves {
+		resultWorkload := resolver.ResolveIP(ipToCheck)
+		assert.Equal(expectedWorkload, resultWorkload)
+	}
+
+	for _, step := range test.updateSteps {
+		// Arrange 2+n: update the state via watchers
+		for _, newPod := range step.newPods {
+			podObj := generatePod(newPod)
+			addObject(fakeWatchers, podObj, "Pod")
+		}
+		for _, newWorkloadResource := range step.newWorkloadResource {
+			obj := generateWorkloadResource(newWorkloadResource)
+			addObject(fakeWatchers, obj, newWorkloadResource.Kind)
+		}
+		for _, newNode := range step.newNodes {
+			obj := generateNode(newNode)
+			addObject(fakeWatchers, obj, "Node")
+		}
+		for _, modifiedPod := range step.modifiedPods {
+			podObj := generatePod(modifiedPod)
+			modifyObject(fakeWatchers, podObj, "Pod")
+		}
+		for _, modifiedWorkloadResource := range step.newWorkloadResource {
+			obj := generateWorkloadResource(modifiedWorkloadResource)
+			modifyObject(fakeWatchers, obj, modifiedWorkloadResource.Kind)
+		}
+		for _, modifiedNode := range step.modifiedNodes {
+			obj := generateNode(modifiedNode)
+			modifyObject(fakeWatchers, obj, "Node")
+		}
+
+		if step.shouldWait {
+			time.Sleep(1 * time.Second)
+		}
+
+		// Act+Assert 2+n
+		for ipToResolve, expectedWorkload := range step.expectedResolves {
+			assert.Equal(expectedWorkload, resolver.ResolveIP(ipToResolve))
+		}
+
+	}
+}
+
 var testDeployment = workloadResourceDescriptor{"deployment1", "namespaceA", types.UID(uuid.NewString()), "Deployment"}
 var testReplicaSet = workloadResourceDescriptor{"replicaset1", "namespaceA", types.UID(uuid.NewString()), "ReplicaSet"}
 var testDaemonSet = workloadResourceDescriptor{"daemonset1", "namespaceA", types.UID(uuid.NewString()), "DaemonSet"}
@@ -330,7 +389,7 @@ var testJob = workloadResourceDescriptor{"job1", "namespaceA", types.UID(uuid.Ne
 var testCronjob = workloadResourceDescriptor{"cronjob1", "namespaceA", types.UID(uuid.NewString()), "CronJob"}
 
 func TestResolving(t *testing.T) {
-	var tests = []test{
+	var tests = []testScenario{
 		{
 			description: "unsuccessful resolving result should be external",
 			initialState: testStep{
@@ -717,6 +776,17 @@ func TestResolving(t *testing.T) {
 				},
 			},
 		},
+	}
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			runTest(t, test)
+		})
+	}
+}
+
+func TestControllersResolving(t *testing.T) {
+
+	var controllersTests = []testScenario{
 		{
 			description: "initial snapshot 1 pod controlled by delpoyment resolve to deployment",
 			initialState: testStep{
@@ -820,64 +890,9 @@ func TestResolving(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
+	for _, test := range controllersTests {
 		t.Run(test.description, func(t *testing.T) {
-			assert := assert.New(t)
-			// Arrange 1: mocks and initial state
-			originalObjs := generateClusterObjects(test.initialState.newPods, test.initialState.newWorkloadResource, test.initialState.newNodes)
-			fakeClient := testclient.NewSimpleClientset(originalObjs...)
-			fakeWatchers := createPrependWatchers(fakeClient)
-
-			resolver, err := k8s.NewK8sIPResolver(fakeClient, false)
-			assert.NoError(err)
-
-			// Act 1: process initial state
-			err = resolver.StartWatching()
-			assert.NoError(err)
-
-			// Assert 1: resolve and compare to expected, original state
-			for ipToCheck, expectedWorkload := range test.initialState.expectedResolves {
-				resultWorkload := resolver.ResolveIP(ipToCheck)
-				assert.Equal(expectedWorkload, resultWorkload)
-			}
-
-			for _, step := range test.updateSteps {
-				// Arrange 2+n: update the state via watchers
-				for _, newPod := range step.newPods {
-					podObj := generatePod(newPod)
-					addObject(fakeWatchers, podObj, "Pod")
-				}
-				for _, newWorkloadResource := range step.newWorkloadResource {
-					obj := generateWorkloadResource(newWorkloadResource)
-					addObject(fakeWatchers, obj, newWorkloadResource.Kind)
-				}
-				for _, newNode := range step.newNodes {
-					obj := generateNode(newNode)
-					addObject(fakeWatchers, obj, "Node")
-				}
-				for _, modifiedPod := range step.modifiedPods {
-					podObj := generatePod(modifiedPod)
-					modifyObject(fakeWatchers, podObj, "Pod")
-				}
-				for _, modifiedWorkloadResource := range step.newWorkloadResource {
-					obj := generateWorkloadResource(modifiedWorkloadResource)
-					modifyObject(fakeWatchers, obj, modifiedWorkloadResource.Kind)
-				}
-				for _, modifiedNode := range step.modifiedNodes {
-					obj := generateNode(modifiedNode)
-					modifyObject(fakeWatchers, obj, "Node")
-				}
-
-				if step.shouldWait {
-					time.Sleep(1 * time.Second)
-				}
-
-				// Act+Assert 2+n
-				for ipToResolve, expectedWorkload := range step.expectedResolves {
-					assert.Equal(expectedWorkload, resolver.ResolveIP(ipToResolve))
-				}
-
-			}
+			runTest(t, test)
 		})
 	}
 }
