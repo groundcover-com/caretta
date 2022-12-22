@@ -23,9 +23,7 @@ func (resolver *MockResolver) ResolveIP(ip string) k8s.Workload {
 func (resolver *MockResolver) StartWatching() error {
 	return nil
 }
-func (resolver *MockResolver) StopWatching() {
-
-}
+func (resolver *MockResolver) StopWatching() {}
 
 func isLinkInMap(clientIp int, serverIp int, linksMap map[caretta.NetworkLink]uint64) bool {
 	for link := range linksMap {
@@ -45,89 +43,291 @@ func getThroughputFromMap(clientIp int, serverIp int, linksMap map[caretta.Netwo
 	return 0
 }
 
-func TestAggregationClient(t *testing.T) {
-	assert := assert.New(t)
-	m, err := ebpf.NewMap(&ebpf.MapSpec{
+func createMap() (*ebpf.Map, error) {
+	return ebpf.NewMap(&ebpf.MapSpec{
 		Name:       "ConnectionsMock",
 		Type:       ebpf.Hash,
 		KeySize:    24,
 		ValueSize:  24,
 		MaxEntries: 8,
 	})
-	assert.NoError(err)
-	defer m.Close()
-
-	clientIp := 1
-	serverIp := 2
-	conn1 := caretta.ConnectionIdentifier{
-		Id:  1,
-		Pid: 1,
-		Tuple: caretta.ConnectionTuple{
-			SrcIp:   uint32(clientIp),
-			DstIp:   uint32(serverIp),
-			SrcPort: 55555,
-			DstPort: 80,
-		},
-		Role: 1,
-	}
-	throughput1 := caretta.ConnectionThroughputStats{
-		BytesSent:     10,
-		BytesReceived: 0,
-		IsActive:      1,
-	}
-	m.Update(conn1, throughput1, ebpf.UpdateAny)
-
-	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
-
-	pastLinks := make(map[caretta.NetworkLink]uint64)
-
-	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
-	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
-	assert.False(isLinkInMap(serverIp, clientIp, currentLinks))
 }
 
-func TestAggregationServer(t *testing.T) {
-	assert := assert.New(t)
-	m, err := ebpf.NewMap(&ebpf.MapSpec{
-		Name:       "ConnectionsMock",
-		Type:       ebpf.Hash,
-		KeySize:    24,
-		ValueSize:  24,
-		MaxEntries: 8,
-	})
-	assert.NoError(err)
-	defer m.Close()
-
-	clientIp := 1
-	serverIp := 2
-	conn1 := caretta.ConnectionIdentifier{
-		Id:  1,
-		Pid: 1,
-		Tuple: caretta.ConnectionTuple{
-			SrcIp:   uint32(serverIp),
-			DstIp:   uint32(clientIp),
-			SrcPort: 80,
-			DstPort: 55555,
-		},
-		Role: caretta.ServerConnectionRole,
-	}
-	throughput1 := caretta.ConnectionThroughputStats{
-		BytesSent:     10,
-		BytesReceived: 0,
-		IsActive:      1,
-	}
-	m.Update(conn1, throughput1, ebpf.UpdateAny)
-
-	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
-
-	pastLinks := make(map[caretta.NetworkLink]uint64)
-
-	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
-	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
-	assert.False(isLinkInMap(serverIp, clientIp, currentLinks))
+type testConnection struct {
+	connId     caretta.ConnectionIdentifier
+	throughput caretta.ConnectionThroughputStats
 }
 
-func TestAggregationInactive(t *testing.T) {
+type aggregationTest struct {
+	description        string
+	connections        []testConnection
+	expectedLink       caretta.NetworkLink
+	expectedThroughput uint64
+}
+
+var clientTuple = caretta.ConnectionTuple{
+	SrcIp:   1,
+	DstIp:   2,
+	SrcPort: 55555,
+	DstPort: 80,
+}
+var serverTuple = caretta.ConnectionTuple{
+	DstIp:   1,
+	SrcIp:   2,
+	DstPort: 55555,
+	SrcPort: 80,
+}
+var activeThroughput = caretta.ConnectionThroughputStats{
+	BytesSent:     10,
+	BytesReceived: 2,
+	IsActive:      1,
+}
+var inactiveThroughput = caretta.ConnectionThroughputStats{
+	BytesSent:     10,
+	BytesReceived: 2,
+	IsActive:      0,
+}
+var clientLink = caretta.NetworkLink{
+	Client: k8s.Workload{
+		Name:      caretta.IP(1).String(),
+		Namespace: "Namespace",
+		Kind:      "Kind",
+	},
+	Server: k8s.Workload{
+		Name:      caretta.IP(2).String(),
+		Namespace: "Namespace",
+		Kind:      "Kind",
+	},
+	ServerPort: 80,
+	Role:       caretta.ClientConnectionRole,
+}
+var serverLink = caretta.NetworkLink{
+	Client: k8s.Workload{
+		Name:      caretta.IP(1).String(),
+		Namespace: "Namespace",
+		Kind:      "Kind",
+	},
+	Server: k8s.Workload{
+		Name:      caretta.IP(2).String(),
+		Namespace: "Namespace",
+		Kind:      "Kind",
+	},
+	ServerPort: 80,
+	Role:       caretta.ServerConnectionRole,
+}
+var aggregationTests = []aggregationTest{
+	{
+		description: "single client connection",
+		connections: []testConnection{
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    1,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+		},
+		expectedLink:       clientLink,
+		expectedThroughput: 10,
+	},
+	{
+		description: "single server connection",
+		connections: []testConnection{
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    1,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+		},
+		expectedLink:       serverLink,
+		expectedThroughput: 10,
+	},
+	{
+		description: "2 client connections",
+		connections: []testConnection{
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    1,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    2,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+		},
+		expectedLink:       clientLink,
+		expectedThroughput: 20,
+	},
+	{
+		description: "2 server connections",
+		connections: []testConnection{
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    1,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    2,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+		},
+		expectedLink:       serverLink,
+		expectedThroughput: 20,
+	},
+	{
+		description: "3 active client connections, 2 inactive",
+		connections: []testConnection{
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    1,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    2,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    3,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    4,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: inactiveThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    5,
+					Pid:   1,
+					Tuple: clientTuple,
+					Role:  caretta.ClientConnectionRole,
+				},
+				throughput: inactiveThroughput,
+			},
+		},
+		expectedLink:       clientLink,
+		expectedThroughput: 50,
+	},
+	{
+		description: "3 active server connections, 2 inactive",
+		connections: []testConnection{
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    1,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    2,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    3,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: activeThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    4,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: inactiveThroughput,
+			},
+			{
+				connId: caretta.ConnectionIdentifier{
+					Id:    5,
+					Pid:   1,
+					Tuple: serverTuple,
+					Role:  caretta.ServerConnectionRole,
+				},
+				throughput: inactiveThroughput,
+			},
+		},
+		expectedLink:       serverLink,
+		expectedThroughput: 50,
+	},
+}
+
+func TestAggregations(t *testing.T) {
+	for _, test := range aggregationTests {
+		t.Run(test.description, func(t *testing.T) {
+			assert := assert.New(t)
+			m, err := createMap()
+			assert.NoError(err)
+			defer m.Close()
+
+			tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
+			pastLinks := make(map[caretta.NetworkLink]uint64)
+			var currentLinks map[caretta.NetworkLink]uint64
+			for _, connection := range test.connections {
+				m.Update(connection.connId, connection.throughput, ebpf.UpdateAny)
+				_, currentLinks = tracer.TracesPollingIteration(pastLinks)
+			}
+			resultThroughput, ok := currentLinks[test.expectedLink]
+			assert.True(ok, "expected link not in result map")
+			assert.Equal(test.expectedThroughput, resultThroughput, "wrong throughput value")
+		})
+
+	}
+}
+
+func TestDeletion(t *testing.T) {
 	assert := assert.New(t)
 	m, err := ebpf.NewMap(&ebpf.MapSpec{
 		Name:       "ConnectionsMock",
@@ -139,28 +339,13 @@ func TestAggregationInactive(t *testing.T) {
 	assert.NoError(err)
 	defer m.Close()
 
-	clientIp := 1
-	serverIp := 2
-	firstThroughputSize := 10
-	inactiveThroughputSIze := 20
-	thirdThroughputSize := 15
-
 	conn1 := caretta.ConnectionIdentifier{
-		Id:  1,
-		Pid: 1,
-		Tuple: caretta.ConnectionTuple{
-			SrcIp:   uint32(serverIp),
-			DstIp:   uint32(clientIp),
-			SrcPort: 80,
-			DstPort: 55555,
-		},
-		Role: caretta.ServerConnectionRole,
+		Id:    1,
+		Pid:   1,
+		Tuple: serverTuple,
+		Role:  caretta.ServerConnectionRole,
 	}
-	throughput1 := caretta.ConnectionThroughputStats{
-		BytesSent:     uint64(firstThroughputSize),
-		BytesReceived: 0,
-		IsActive:      1,
-	}
+	throughput1 := activeThroughput
 	m.Update(conn1, throughput1, ebpf.UpdateAny)
 
 	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
@@ -168,38 +353,35 @@ func TestAggregationInactive(t *testing.T) {
 	pastLinks := make(map[caretta.NetworkLink]uint64)
 
 	pastLinks, currentLinks := tracer.TracesPollingIteration(pastLinks)
-	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
-	assert.False(isLinkInMap(serverIp, clientIp, currentLinks))
+	resultThroughput, ok := currentLinks[serverLink]
+	assert.True(ok, "link not in map, map is %v", currentLinks)
+	assert.Equal(throughput1.BytesSent, resultThroughput)
 
 	// make sure connection is still in map
 
-	var resultThroughput caretta.ConnectionThroughputStats
 	err = m.Lookup(&conn1, &resultThroughput)
 	assert.NoError(err)
 
 	// update the throughput so the connection is inactive
-	throughput2 := caretta.ConnectionThroughputStats{
-		BytesSent:     uint64(inactiveThroughputSIze),
-		BytesReceived: 0,
-		IsActive:      0,
-	}
+	throughput2 := inactiveThroughput
 	m.Update(conn1, throughput2, ebpf.UpdateAny)
 	pastLinks, currentLinks = tracer.TracesPollingIteration(pastLinks)
 
 	// check the past connection is both in past links and in current links
-	assert.True(isLinkInMap(clientIp, serverIp, pastLinks))
-	assert.True(isLinkInMap(clientIp, serverIp, currentLinks))
+	resultThroughput, ok = currentLinks[serverLink]
+	assert.True(ok, "link not in map, map is %v", currentLinks)
+	assert.Equal(throughput1.BytesSent, resultThroughput)
+	_, ok = pastLinks[serverLink]
+	assert.True(ok, "inactive link not in past links: %v", pastLinks)
 	// check connection is deleted from ebpf map
 	err = m.Lookup(&conn1, &resultThroughput)
-	assert.Error(err)
+	assert.Error(err, "inactive connection not deleted from connections map")
 
 	// new connection, same link
-	throughput3 := caretta.ConnectionThroughputStats{
-		BytesSent:     uint64(thirdThroughputSize),
-		BytesReceived: 0,
-		IsActive:      1,
-	}
+	throughput3 := activeThroughput
 	m.Update(conn1, throughput3, ebpf.UpdateAny)
 	_, currentLinks = tracer.TracesPollingIteration(pastLinks)
-	assert.Equal(uint64(inactiveThroughputSIze+thirdThroughputSize), getThroughputFromMap(clientIp, serverIp, currentLinks))
+	resultThroughput, ok = currentLinks[serverLink]
+	assert.True(ok, "link not in map, map is %v", currentLinks)
+	assert.Equal(throughput1.BytesSent+throughput3.BytesSent, resultThroughput)
 }
