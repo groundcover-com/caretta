@@ -6,7 +6,8 @@ import (
 	"log"
 	"net"
 
-	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
+	"github.com/cilium/ebpf"
+	"github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/groundcover-com/caretta/pkg/tracing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,21 +34,44 @@ var (
 	})
 )
 
+type IPResolver interface {
+	ResolveIP(string) k8s.Workload
+	StartWatching() error
+	StopWatching()
+}
+
+type Probes interface {
+	UnloadProbes() error
+}
+
 type LinksTracer struct {
-	ebpfObjects tracing.TracerEbpfObjects
-	resolver    *caretta_k8s.K8sIPResolver
+	ebpfObjects Probes
+	connections *ebpf.Map
+	resolver    IPResolver
 }
 
 // initializes a LinksTracer object
-func NewTracer(resolver *caretta_k8s.K8sIPResolver) LinksTracer {
+func NewTracer(resolver *k8s.K8sIPResolver) LinksTracer {
 	tracer := LinksTracer{resolver: resolver}
 	return tracer
 }
 
+func NewTracerWithObjs(resolver IPResolver, connections *ebpf.Map, probes Probes) LinksTracer {
+	return LinksTracer{
+		ebpfObjects: probes,
+		connections: connections,
+		resolver:    resolver,
+	}
+}
+
 func (tracer *LinksTracer) Start() error {
-	var err error
-	tracer.ebpfObjects, err = tracing.LoadProbes()
-	return err
+	objs, connMap, err := tracing.LoadProbes()
+	if err != nil {
+		return err
+	}
+	tracer.ebpfObjects = &objs
+	tracer.connections = connMap
+	return nil
 }
 
 func (tracer *LinksTracer) Stop() error {
@@ -70,7 +94,7 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 	var conn ConnectionIdentifier
 	var throughput ConnectionThroughputStats
 
-	entries := tracer.ebpfObjects.BpfObjs.Connections.Iterate()
+	entries := tracer.connections.Iterate()
 	// iterate the map from the eBPF program
 	for entries.Next(&conn, &throughput) {
 		// filter unnecessary connection
@@ -115,13 +139,13 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64) {
 	// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
 	var throughput ConnectionThroughputStats
-	err := tracer.ebpfObjects.BpfObjs.Connections.Lookup(conn, &throughput)
+	err := tracer.connections.Lookup(conn, &throughput)
 	if err != nil {
 		log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
 		failedConnectionDeletion.Inc()
 		return
 	}
-	err = tracer.ebpfObjects.BpfObjs.Connections.Delete(conn)
+	err = tracer.connections.Delete(conn)
 	if err != nil {
 		log.Printf("Error deleting connection from map: %v", err)
 		failedConnectionDeletion.Inc()

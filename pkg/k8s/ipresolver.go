@@ -33,7 +33,7 @@ type clusterSnapshot struct {
 }
 
 type K8sIPResolver struct {
-	clientset        *kubernetes.Clientset
+	clientset        kubernetes.Interface
 	snapshot         clusterSnapshot
 	ipsMap           sync.Map
 	stopSignal       chan bool
@@ -47,7 +47,7 @@ type Workload struct {
 	Kind      string
 }
 
-func NewK8sIPResolver(clientset *kubernetes.Clientset, resolveDns bool) (*K8sIPResolver, error) {
+func NewK8sIPResolver(clientset kubernetes.Interface, resolveDns bool) (*K8sIPResolver, error) {
 	var dnsCache *lrucache.Cache[string, string]
 	if resolveDns {
 		var err error
@@ -229,6 +229,8 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 	switch nodeEvent.Type {
 	case watch.Added:
+		fallthrough
+	case watch.Modified:
 		node, ok := nodeEvent.Object.(*v1.Node)
 		if !ok {
 			return

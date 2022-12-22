@@ -9,13 +9,13 @@ import (
 	"github.com/cilium/ebpf/link"
 )
 
-type TracerEbpfObjects struct {
+type Probes struct {
 	Kprobe     link.Link
 	Tracepoint link.Link
 	BpfObjs    bpfObjects
 }
 
-func LoadProbes() (TracerEbpfObjects, error) {
+func LoadProbes() (Probes, *ebpf.Map, error) {
 	objs := bpfObjects{}
 	err := loadBpfObjects(&objs, &ebpf.CollectionOptions{})
 	if err != nil {
@@ -23,31 +23,31 @@ func LoadProbes() (TracerEbpfObjects, error) {
 		if errors.As(err, &ve) {
 			fmt.Printf("Verifier Error: %+v\n", ve)
 		}
-		return TracerEbpfObjects{}, fmt.Errorf("error loading BPF objects from go-side. %v", err)
+		return Probes{}, nil, fmt.Errorf("error loading BPF objects from go-side. %v", err)
 	}
 	log.Printf("BPF objects loaded")
 
 	// attach a kprobe and tracepoint
 	kp, err := link.Kprobe("tcp_data_queue", objs.bpfPrograms.HandleTcpDataQueue, nil)
 	if err != nil {
-		return TracerEbpfObjects{}, fmt.Errorf("error attaching kprobe: %v", err)
+		return Probes{}, nil, fmt.Errorf("error attaching kprobe: %v", err)
 	}
 	log.Printf("Kprobe attached successfully")
 
 	tp, err := link.Tracepoint("sock", "inet_sock_set_state", objs.bpfPrograms.HandleSockSetState, nil)
 	if err != nil {
-		return TracerEbpfObjects{}, fmt.Errorf("error attaching tracepoint: %v", err)
+		return Probes{}, nil, fmt.Errorf("error attaching tracepoint: %v", err)
 	}
 	log.Printf("Tracepoint attached successfully")
 
-	return TracerEbpfObjects{
+	return Probes{
 		Kprobe:     kp,
 		Tracepoint: tp,
 		BpfObjs:    objs,
-	}, nil
+	}, objs.Connections, nil
 }
 
-func (objs *TracerEbpfObjects) UnloadProbes() error {
+func (objs *Probes) UnloadProbes() error {
 	// if any close operation fails, will continue to try closing the rest of the struct,
 	// and return the first error
 	var resultErr error
