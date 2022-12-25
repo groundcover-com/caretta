@@ -4,6 +4,8 @@ prometheusPort: 7117
 prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
 
+metricsReplicas: 1
+
 persistentStorage:
   enabled: false
   size: 50Mi

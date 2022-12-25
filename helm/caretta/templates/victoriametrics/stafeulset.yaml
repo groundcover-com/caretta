@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: victoria
   namespace: {{.Release.Namespace}}
@@ -9,6 +9,8 @@ spec:
   selector:
     matchLabels:
       app: caretta-victoria
+  serviceName: victoria
+  replicas: {{ .Values.metricsReplicas }}
   template:
     metadata:
       labels:
@@ -41,3 +43,13 @@ spec:
         {{ else }}
         emptyDir: {}
         {{ end }}
+  {{ if .Values.persistentStorage.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: caretta-vm-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage:  {{ .Values.persistentStorage.size | quote }}
+  {{ end }}
