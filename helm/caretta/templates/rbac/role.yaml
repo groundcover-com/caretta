@@ -1,61 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: "caretta-role"
+  name: {{ include "caretta.fullname" . }}
 rules:
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - operators.coreos.com
-    resources:
-      - clusterserviceversions
-      - catalogsources
-      - installplans
-      - subscriptions
-      - operatorgroups
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - packages.operators.coreos.com
-    resources:
-      - packagemanifests
-      - packagemanifests/icon
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - argoproj.io
-    resources:
-      - workflows
-      - workflows/finalizers
-      - workfloweventbindings
-      - workfloweventbindings/finalizers
-      - workflowtemplates
-      - workflowtemplates/finalizers
-      - cronworkflows
-      - cronworkflows/finalizers
-      - clusterworkflowtemplates
-      - clusterworkflowtemplates/finalizers
-      - workflowtaskresults
-      - workflowtaskresults/finalizers
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - argoproj.io
-    resources:
-      - rollouts
-      - rollouts/scale
-      - experiments
-      - analysistemplates
-      - clusteranalysistemplates
-      - analysisruns
   - verbs:
       - get
       - list
@@ -117,15 +64,6 @@ rules:
       - statefulsets
       - statefulsets/scale
       - statefulsets/status
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - autoscaling
-    resources:
-      - horizontalpodautoscalers
-      - horizontalpodautoscalers/status
   - verbs:
       - get
       - list
@@ -202,19 +140,4 @@ rules:
     resources:
       - pods
       - nodes
-  - verbs:
-      - get
-    apiGroups:
-      - apiextensions.k8s.io
-    resources:
-      - customresourcedefinitions
-    resourceNames:
-      - viziers.px.dev
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - px.dev
-    resources:
-      - viziers
+

@@ -3,5 +3,6 @@ kind: ConfigMap
 metadata:
   name: caretta-grafana-dashboards
   namespace: {{ .Release.Namespace }}
-data:
-{{ (.Files.Glob "dashboards/*").AsConfig | indent 2 }}
+data: 
+  dashboard.json: |-
+{{ .Files.Get "dashboard.json" | indent 4}}
