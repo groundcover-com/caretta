@@ -1,117 +1,446 @@
 {
     "annotations": {
-        "list": [
+      "list": [
         {
-            "builtIn": 1,
-            "datasource": {
+          "builtIn": 1,
+          "datasource": {
             "type": "grafana",
             "uid": "-- Grafana --"
-            },
-            "enable": true,
-            "hide": true,
-            "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations & Alerts",
-            "target": {
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "target": {
             "limit": 100,
             "matchAny": false,
             "tags": [],
             "type": "dashboard"
-            },
-            "type": "dashboard"
+          },
+          "type": "dashboard"
         }
-        ]
+      ]
     },
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
-    "links": [],
+    "id": 3,
+    "links": [
+      {
+        "asDropdown": false,
+        "icon": "question",
+        "includeVars": false,
+        "keepTime": false,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Support",
+        "tooltip": "Find help on our slack",
+        "type": "link",
+        "url": "https://groundcover-community.slack.com/archives/C041LLCL6Q4"
+      }
+    ],
     "liveNow": false,
     "panels": [
-        {
+      {
         "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
         },
         "gridPos": {
-            "h": 18,
-            "w": 14,
-            "x": 0,
-            "y": 0
+          "h": 17,
+          "w": 15,
+          "x": 0,
+          "y": 0
         },
         "id": 2,
         "interval": "15s",
+        "options": {
+          "nodes": {
+            "arcs": [
+              {
+                "color": "#8AB8FF"
+              }
+            ]
+          }
+        },
         "targets": [
-            {
+          {
             "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "sum by (id, title, subTitle) (increase((label_replace(label_replace(label_replace((caretta_links_observed{ClientNamespace=~\"$namespace\"} or caretta_links_observed{ServerNamespace=~\"$namespace\"}), \"subTitle\", \"$1\", \"ServerNamespace\", \"(.*)\"), \"title\", \"$1\", \"ServerName\", \"(.*)\"), \"id\", \"$1\", \"ServerId\", \"(.*)\") or label_replace(label_replace(label_replace((caretta_links_observed{ClientNamespace=~\"$namespace\"} or caretta_links_observed{ServerNamespace=~\"$namespace\"}), \"subTitle\", \"$1\", \"ClientNamespace\", \"(.*)\"), \"title\", \"$1\", \"ClientName\", \"(.*)\"), \"id\", \"$1\", \"ClientId\", \"(.*)\")  )[$__range:])) > 0",
+            "expr": "sum by (id, title, subTitle, detail__kind) (increase(label_replace((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"detail__kind\", \"$1\", \"server_kind\", \"(.*)\"), \"subTitle\", \"$1\", \"server_namespace\", \"(.*)\"), \"title\", \"$1\", \"server_name\", \"(.*)\"), \"id\", \"$1\", \"server_id\", \"(.*)\") or label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"detail__kind\", \"$1\", \"client_kind\", \"(.*)\"), \"subTitle\", \"$1\", \"client_namespace\", \"(.*)\"), \"title\", \"$1\", \"client_name\", \"(.*)\"), \"id\", \"$1\", \"client_id\", \"(.*)\")  ), \"arc__color\", \"1\", \"link_id\", \"(.*)\")[$__range])) > 0",
             "format": "table",
             "instant": true,
             "legendFormat": "__auto",
             "range": false,
             "refId": "nodes"
-            },
-            {
+          },
+          {
             "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "sum by (id, source, target, mainStat) (increase((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{ClientNamespace=~\"$namespace\"} or caretta_links_observed{ServerNamespace=~\"$namespace\"}), \"id\", \"$1\", \"LinkId\", \"(.*)\"), \"source\", \"$1\", \"ClientId\", \"(.*)\"), \"target\", \"$1\", \"ServerId\", \"(.*)\"), \"mainStat\", \"$1\", \"ServerPort\", \"(.*)\"))[$__range:])) > 0",
+            "expr": "sum by (id, source, target, mainStat) (increase((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"id\", \"$1\", \"link_id\", \"(.*)\"), \"source\", \"$1\", \"client_id\", \"(.*)\"), \"target\", \"$1\", \"server_id\", \"(.*)\"), \"mainStat\", \"$1\", \"server_port\", \"(.*)\")))) > 0",
             "format": "table",
             "hide": false,
             "instant": true,
             "legendFormat": "__auto",
             "range": false,
             "refId": "edges"
-            }
+          }
         ],
-        "title": "Map Namespace inbound+internal+outbound",
+        "title": "Service Map",
         "type": "nodeGraph"
-        }
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              }
+            },
+            "links": [],
+            "mappings": []
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 11,
+          "w": 9,
+          "x": 15,
+          "y": 0
+        },
+        "id": 4,
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "right",
+            "showLegend": true
+          },
+          "pieType": "pie",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "editorMode": "code",
+            "expr": "sum by (server_port) (increase((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"})[$__range]))",
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "ports distribution",
+        "type": "piechart"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 10,
+          "w": 9,
+          "x": 15,
+          "y": 11
+        },
+        "id": 8,
+        "options": {
+          "displayMode": "gradient",
+          "minVizHeight": 10,
+          "minVizWidth": 0,
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "pluginVersion": "9.3.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "sort_desc(sum by (client_name) ((increase(caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\", server_namespace=\"external\"}[$__range]))))",
+            "format": "time_series",
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Outbound-facing workloads",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "description": "",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "decbytes"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 15,
+          "x": 0,
+          "y": 17
+        },
+        "id": 6,
+        "options": {
+          "displayMode": "lcd",
+          "minVizHeight": 10,
+          "minVizWidth": 0,
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "pluginVersion": "9.3.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "sort_desc(topk(15, sum by (client_name, server_name, server_port) ( rate( (caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"})[$__range]) ) ))",
+            "format": "time_series",
+            "instant": true,
+            "legendFormat": "{{client_name}}->{{server_name}}:{{server_port}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Top connections in time range",
+        "type": "bargauge"
+      }
     ],
     "schemaVersion": 37,
     "style": "dark",
     "tags": [],
     "templating": {
-        "list": [
+      "list": [
         {
-            "allValue": "(.*)",
-            "datasource": {
+          "allValue": "(.*)",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
-            },
-            "definition": "query_result(caretta_links_observed)",
-            "hide": 0,
-            "includeAll": true,
-            "multi": true,
-            "name": "namespace",
-            "options": [],
-            "query": {
+          },
+          "definition": "query_result(caretta_links_observed)",
+          "hide": 0,
+          "includeAll": true,
+          "multi": true,
+          "name": "namespace",
+          "options": [],
+          "query": {
             "query": "query_result(caretta_links_observed)",
             "refId": "StandardVariableQuery"
-            },
-            "refresh": 1,
-            "regex": "/.*Namespace=\"([^\"]*).*/",
-            "skipUrlSync": false,
-            "sort": 0,
-            "type": "query"
+          },
+          "refresh": 1,
+          "regex": "/.*_namespace=\"([^\"]*).*/",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "allValue": "(.*)",
+          "current": {
+            "selected": false,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "definition": "query_result(caretta_links_observed)",
+          "hide": 0,
+          "includeAll": true,
+          "multi": true,
+          "name": "kind",
+          "options": [],
+          "query": {
+            "query": "query_result(caretta_links_observed)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "/.*_kind=\"([^\"]*).*/",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
+        },
+        {
+          "allValue": "(.*)",
+          "current": {
+            "selected": false,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "definition": "query_result(caretta_links_observed)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "workload",
+          "multi": true,
+          "name": "workload",
+          "options": [],
+          "query": {
+            "query": "query_result(caretta_links_observed)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "/.*_name=\"([^\"]*).*/",
+          "skipUrlSync": false,
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "allValue": "(.*)",
+          "current": {
+            "selected": true,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "definition": "label_values(server_port)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "server port",
+          "multi": true,
+          "name": "port",
+          "options": [],
+          "query": {
+            "query": "label_values(server_port)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
         }
-        ]
+      ]
     },
     "time": {
-        "from": "now-5m",
-        "to": "now"
+      "from": "now-5m",
+      "to": "now"
     },
     "timepicker": {},
     "timezone": "",
-    "title": "Caretta Service Map",
-    "uid": "pF1NHmK4k",
-    "version": 1,
+    "title": "Caretta Service Map Copy",
+    "uid": "sb642Ot4z",
+    "version": 6,
     "weekStart": ""
-}
+  }
