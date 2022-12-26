@@ -94,8 +94,8 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 	}
 	return Workload{
 		Name:      host,
-		Namespace: "External",
-		Kind:      "External",
+		Namespace: "external",
+		Kind:      "external",
 	}
 }
 
@@ -239,8 +239,8 @@ func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 		for _, nodeAddress := range node.Status.Addresses {
 			resolver.storeWorkloadsIP(nodeAddress.Address, &Workload{
 				Name:      node.Name,
-				Namespace: "Node",
-				Kind:      "Node",
+				Namespace: "node",
+				Kind:      "node",
 			})
 		}
 	case watch.Deleted:
@@ -498,8 +498,8 @@ func (resolver *K8sIPResolver) updateIpMapping() {
 		for _, nodeAddress := range node.Status.Addresses {
 			workload := Workload{
 				Name:      node.Name,
-				Namespace: "Node",
-				Kind:      "Node",
+				Namespace: "node",
+				Kind:      "node",
 			}
 			resolver.storeWorkloadsIP(nodeAddress.Address, &workload)
 		}
@@ -513,7 +513,7 @@ func (resolver *K8sIPResolver) storeWorkloadsIP(ip string, newWorkload *Workload
 	if ok {
 		existingWorkload, ok := val.(Workload)
 		if ok {
-			if existingWorkload.Kind == "Node" && newWorkload.Kind != "Node" {
+			if existingWorkload.Kind == "node" && newWorkload.Kind != "node" {
 				return
 			}
 		}
