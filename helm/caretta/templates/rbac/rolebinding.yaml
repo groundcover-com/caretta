@@ -1,13 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: caretta
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "caretta.fullname" . }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: "caretta-role"
+  name: {{ include "caretta.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: caretta
+    name: {{ include "caretta.name" . }}
     namespace: {{ .Release.Namespace }}

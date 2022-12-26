@@ -1,37 +1,50 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: caretta
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "caretta.name" . }}
   labels:
     app: caretta
+    {{- include "caretta.labels" . | nindent 4 }}
 spec:
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: caretta
+      {{- include "caretta.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+    {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         app: caretta
+        {{- include "caretta.selectorLabels" . | nindent 8 }}
     spec:
-      tolerations:
-        - key: node-role.kubernetes.io/control-plane
-          operator: Exists
-          effect: NoSchedule
-        - key: node-role.kubernetes.io/master
-          operator: Exists
-          effect: NoSchedule
-        - key: stsonly
-          operator: Exists
-          effect: NoSchedule
-      serviceAccountName: caretta
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "caretta.name" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: caretta
-          image: {{ .Values.carettaImage | quote }}
-          imagePullPolicy: Always
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - mountPath: /proc
+              name: proc
+            - mountPath: /sys/kernel/debug
+              name: debug
           ports:
-            - containerPort: {{ .Values.prometheusPort }}
-              name: prom-metrics
+            - name: prom-metrics
+              containerPort: {{ .Values.prometheusPort }}
               protocol: TCP
           env:
             - name: "RESOLVE_DNS"
@@ -45,11 +58,20 @@ spec:
           securityContext:
             privileged: true
             readOnlyRootFilesystem: true
-          volumeMounts:
-            - mountPath: /proc
-              name: proc
-            - mountPath: /sys/kernel/debug
-              name: debug
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       volumes:
         - name: proc
           hostPath:

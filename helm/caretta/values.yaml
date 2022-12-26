@@ -1,9 +1,121 @@
-carettaImage: "125608480246.dkr.ecr.eu-west-3.amazonaws.com/caretta:latest"
 enableDnsResolving: true
 prometheusPort: 7117
 prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
 
-persistentStorage:
-  enabled: false
-  size: 50Mi
+image:
+  repository: 125608480246.dkr.ecr.eu-west-3.amazonaws.com/caretta
+  pullPolicy: Always
+  tag: latest
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+resources: {}
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:  
+  privileged: true
+  readOnlyRootFilesystem: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+nodeSelector: {}
+affinity: {}
+priorityClassName:
+
+victoria-metrics-single:
+  server:
+    fullnameOverride: carreta-vm
+    persistentVolume:
+       enabled: false
+       size: 16Gi # change enabled to true if you pv is required
+
+    scrape:
+      enabled: true       
+
+      config:
+        global:
+          scrape_interval: 15s
+
+        scrape_configs:
+          - job_name:       'caretta'
+            metrics_path: /metrics
+            scrape_interval: 5s
+            kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names:
+                  - caretta-test
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_label_app]
+                separator: ;
+                regex: caretta
+                replacement: $1
+                action: keep
+              - action: labelmap
+                regex: __meta_kubrnetes_pod_label_(.+)
+              - source_labels: [__meta_kubernetes_pod_name]
+                action: replace
+                target_label: caretta_pod
+              - source_labels: [__meta_kubernetes_pod_node_name]
+                action: replace
+                target_label: caretta_node
+
+grafana:
+  datasources:  
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: "http://carreta-vm:8428"
+        editable: "true"
+  
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: true
+  
+  dashboardsConfigMaps: 
+    default: "caretta-grafana-dashboards"
+
+  grafana.ini:
+    auth.anonymous:
+      enabled: true

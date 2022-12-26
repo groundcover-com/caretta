@@ -1,9 +1,9 @@
 dependencies:
-- name: prometheus
-  repository: https://prometheus-community.github.io/helm-charts
-  version: 19.0.1
+- name: victoria-metrics-single
+  repository: https://victoriametrics.github.io/helm-charts
+  version: 0.8.48
 - name: grafana
   repository: https://grafana.github.io/helm-charts
   version: 6.48.0
-digest: sha256:9f3cbd838ddcbb8ac1453228264a95e322a38709ada31451e0388e280638744c
-generated: "2022-12-15T11:55:58.979688702Z"
+digest: sha256:eb7c3b54ae1fef78dae03136bdd7c0e34a3a08a34c147a227e824437a443bccb
+generated: "2022-12-26T10:15:04.518501964Z"
