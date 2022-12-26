@@ -1,7 +1,7 @@
 <div align="center">
   <h1>Caretta</h1>
   <p align="center">
-    <img src="images/logo.jpg" width="25%" alt="caretta" title="caretta" />
+    <img src="images/logo.svg" width="25%" alt="caretta" title="caretta" />
    </p>
     <h2>lightweight eBPF-based network service map of your k8s cluster, right to your Grafana.</h2>
   <p>
