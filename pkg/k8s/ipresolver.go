@@ -228,9 +228,7 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 
 func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 	switch nodeEvent.Type {
-	case watch.Added:
-		fallthrough
-	case watch.Modified:
+	case watch.Added, watch.Modified:
 		node, ok := nodeEvent.Object.(*v1.Node)
 		if !ok {
 			return
@@ -304,7 +302,7 @@ func (resolver *K8sIPResolver) handleJobsWatchEvent(jobsEvent *watch.Event) {
 
 func (resolver *K8sIPResolver) handleServicesWatchEvent(servicesEvent *watch.Event) {
 	switch servicesEvent.Type {
-	case watch.Added:
+	case watch.Added, watch.Modified:
 		service, ok := servicesEvent.Object.(*v1.Service)
 		if !ok {
 			return
