@@ -3,11 +3,12 @@
   <p align="center">
     <img src="images/logo.svg" width="25%" alt="caretta" title="caretta" />
    </p>
-    <h2>lightweight eBPF-based network service map of your k8s cluster, right to your Grafana.</h2>
+    <h2>Instant K8s service dependency map , right to your Grafana.</h2>
+    <h4> made by <a href="https://www.groundcover.com">groundcover</h4>
   <p>
 
 
-  [![slack](https://img.shields.io/badge/slack-groundcover-yellowgreen.svg?logo=slack)](https://groundcover-community.slack.com/archives/C041LLCL6Q4)
+  [![slack](https://img.shields.io/badge/slack-groundcover-yellowgreen.svg?logo=slack)](http://www.groundcover.com/join-slack)
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 </div>
 
@@ -19,11 +20,13 @@
 
 ## What is Caretta?
 
-Caretta is a lightweight, standalone tool to collect network statistics in a kubernetes cluster. 
+Caretta is a lightweight, standalone tool that instantly creates a visual network map of the services running in your cluster.
 
-It leverages eBPF to efficiently observe the network traffic in the cluster, and Grafana to query and visualize the collected data.
+Carreta leverages eBPF to efficiently maps all service network interactions in a K8s  cluster, and Grafana to query and visualize the collected data.
 
-If you're interested in understanding how Caretta is built, head over to our <a href="">Caretta blog post!</a>
+Carreta is built to be efficient, with a minimal footprint on the system, and does not require any modifications or installation on the cluster.
+
+Caretta demonstrates the power of using eBPF for observability solutions, which is our vision at <a href="https://groundcover.com">groundcover</a>. If you're interested in understanding how Caretta is built, head over to our <a href="">Caretta blog post!</a>
 
 ## Installing Caretta
 ```
@@ -57,7 +60,7 @@ Caretta's main metric is `caretta_links_observed` (Gauge). It uses the following
 Along those labels, Caretta uses other labels for Grafana's Node Graph panel.
 
 ## Need help?
-Feel free to reach us at our slack channel, or create an issue in this repository.
+Feel free to reach us at our <a href="http://www.groundcover.com/join-slack">slack channel</a>, or create an issue in this repository.
 
 ## Contribution
 Feel free to add your contribution to the project.
