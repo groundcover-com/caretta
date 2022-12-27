@@ -204,6 +204,11 @@ int handle_set_tcp_syn_recv(struct sock* sock) {
 
     bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
 
+    // probably the dst ip will still be unitialized
+    if (conn_id.tuple.dst_ip == 0) {
+      return BPF_SUCCESS;
+    }
+
     conn_id.pid = info.pid;
     conn_id.id = info.id;
     conn_id.role = info.role;
