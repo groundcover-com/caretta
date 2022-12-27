@@ -186,6 +186,6 @@ func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifie
 
 func isAddressLoopback(ip uint32) bool {
 	ipAddr := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ipAddr, ip)
+	binary.LittleEndian.PutUint32(ipAddr, ip)
 	return ipAddr.IsLoopback()
 }
