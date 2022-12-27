@@ -22,7 +22,7 @@ var (
 		Name: "caretta_links_observed",
 		Help: "total bytes_sent value of links observed by caretta since its launch",
 	}, []string{
-		"LinkId", "ClientId", "ClientName", "ClientNamespace", "ClientKind", "ServerId", "ServerName", "ServerNamespace", "ServerKind", "ServerPort", "Role",
+		"link_id", "client_id", "client_name", "client_namespace", "client_kind", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
 	})
 )
 
@@ -106,17 +106,17 @@ func (caretta *Caretta) Stop() {
 
 func (caretta *Caretta) handleLink(link *NetworkLink, throughput uint64) {
 	linksMetrics.With(prometheus.Labels{
-		"LinkId":          strconv.Itoa(int(fnvHash(link.Client.Name+link.Client.Namespace+link.Server.Name+link.Server.Namespace) + link.Role)),
-		"ClientId":        strconv.Itoa(int(fnvHash(link.Client.Name + link.Client.Namespace))),
-		"ClientName":      link.Client.Name,
-		"ClientNamespace": link.Client.Namespace,
-		"ClientKind":      link.Client.Kind,
-		"ServerId":        strconv.Itoa(int(fnvHash(link.Server.Name + link.Server.Namespace))),
-		"ServerName":      link.Server.Name,
-		"ServerNamespace": link.Server.Namespace,
-		"ServerKind":      link.Server.Kind,
-		"ServerPort":      strconv.Itoa(int(link.ServerPort)),
-		"Role":            strconv.Itoa(int(link.Role)),
+		"link_id":          strconv.Itoa(int(fnvHash(link.Client.Name+link.Client.Namespace+link.Server.Name+link.Server.Namespace) + link.Role)),
+		"client_id":        strconv.Itoa(int(fnvHash(link.Client.Name + link.Client.Namespace))),
+		"client_name":      link.Client.Name,
+		"client_namespace": link.Client.Namespace,
+		"client_kind":      link.Client.Kind,
+		"server_id":        strconv.Itoa(int(fnvHash(link.Server.Name + link.Server.Namespace))),
+		"server_name":      link.Server.Name,
+		"server_namespace": link.Server.Namespace,
+		"server_kind":      link.Server.Kind,
+		"server_port":      strconv.Itoa(int(link.ServerPort)),
+		"role":             strconv.Itoa(int(link.Role)),
 	}).Set(float64(throughput))
 }
 

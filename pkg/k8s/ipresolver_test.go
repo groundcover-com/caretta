@@ -242,7 +242,7 @@ func addObject(watchers fakeWatchers, obj runtime.Object, kind string) {
 		{
 			watchers.podsWatcher.Add(obj)
 		}
-	case "Node":
+	case "node":
 		{
 			watchers.nodesWatcher.Add(obj)
 		}
@@ -283,7 +283,7 @@ func modifyObject(watchers fakeWatchers, obj runtime.Object, kind string) {
 		{
 			watchers.podsWatcher.Modify(obj)
 		}
-	case "Node":
+	case "node":
 		{
 			watchers.nodesWatcher.Modify(obj)
 		}
@@ -354,7 +354,7 @@ func runTest(t *testing.T, test testScenario) {
 		}
 		for _, newNode := range step.newNodes {
 			obj := generateNode(newNode)
-			addObject(fakeWatchers, obj, "Node")
+			addObject(fakeWatchers, obj, "node")
 		}
 		for _, modifiedPod := range step.modifiedPods {
 			podObj := generatePod(modifiedPod)
@@ -366,7 +366,7 @@ func runTest(t *testing.T, test testScenario) {
 		}
 		for _, modifiedNode := range step.modifiedNodes {
 			obj := generateNode(modifiedNode)
-			modifyObject(fakeWatchers, obj, "Node")
+			modifyObject(fakeWatchers, obj, "node")
 		}
 
 		if step.shouldWait {
@@ -400,8 +400,8 @@ func TestResolving(t *testing.T) {
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.2": {
 						Name:      "1.1.1.2",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -457,8 +457,8 @@ func TestResolving(t *testing.T) {
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.1": {
 						Name:      "1.1.1.1",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -485,8 +485,8 @@ func TestResolving(t *testing.T) {
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.0": {
 						Name:      "1.1.1.0",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -499,8 +499,8 @@ func TestResolving(t *testing.T) {
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 					},
 				},
@@ -513,8 +513,8 @@ func TestResolving(t *testing.T) {
 				expectedResolves: map[string]k8s.Workload{
 					"1.1.1.0": {
 						Name:      "1.1.1.0",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -530,8 +530,8 @@ func TestResolving(t *testing.T) {
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 						"1.1.1.1": {
 							Name:      "pod1",
@@ -557,8 +557,8 @@ func TestResolving(t *testing.T) {
 					},
 					"1.1.1.2": {
 						Name:      "1.1.1.2",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -598,8 +598,8 @@ func TestResolving(t *testing.T) {
 					},
 					"1.1.1.2": {
 						Name:      "1.1.1.2",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -646,8 +646,8 @@ func TestResolving(t *testing.T) {
 					},
 					"1.1.1.2": {
 						Name:      "1.1.1.2",
-						Namespace: "External",
-						Kind:      "External",
+						Namespace: "external",
+						Kind:      "external",
 					},
 				},
 			},
@@ -667,8 +667,8 @@ func TestResolving(t *testing.T) {
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.1": {
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 						"1.1.1.2": {
 							Name:      "pod1",
@@ -699,13 +699,13 @@ func TestResolving(t *testing.T) {
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": { // resolver isn't expected to delete old not-reused entries
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 						"1.1.2.0": {
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 					},
 				},
@@ -739,13 +739,13 @@ func TestResolving(t *testing.T) {
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node2",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 						"1.1.2.0": {
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 					},
 				},
@@ -769,8 +769,8 @@ func TestResolving(t *testing.T) {
 					expectedResolves: map[string]k8s.Workload{
 						"1.1.1.0": {
 							Name:      "Node1",
-							Namespace: "Node",
-							Kind:      "Node",
+							Namespace: "node",
+							Kind:      "node",
 						},
 					},
 				},
