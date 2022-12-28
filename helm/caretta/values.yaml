@@ -71,8 +71,7 @@ victoria-metrics-single:
             kubernetes_sd_configs:
             - role: pod
               namespaces:
-                names:
-                  - caretta-test
+                own_namespace: true
             relabel_configs:
               - source_labels: [__meta_kubernetes_pod_label_app]
                 separator: ;
