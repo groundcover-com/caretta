@@ -15,7 +15,7 @@
 
 
 <p align="center">
-    <img src="images/screenshot.png" width="90%" alt="caretta-screenshot" title="caretta-screenshot">
+    <img src="images/caretta.gif" width="90%" alt="caretta-screenshot" title="caretta-screenshot">
 </p>
 
 ## What is Caretta?
