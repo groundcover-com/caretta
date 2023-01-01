@@ -118,5 +118,7 @@ grafana:
   grafana.ini:
     auth.anonymous:
       enabled: true
+    dashboards:
+      default_home_dashboard_path: /var/lib/grafana/dashboards/default/dashboard.json 
   adminUser: "admin"
   adminPassword: "admin"
