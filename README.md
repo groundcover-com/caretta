@@ -31,13 +31,13 @@ Caretta demonstrates the power of using eBPF for observability solutions, which 
 ## Installing Caretta
 As simple as installing an helm chart. It is recommended to install Caretta in a new, unique namespace.
 ```
-helm repo add gc https://helm.groundcover.com/
+helm repo add groundcover https://helm.groundcover.com/
 ```
 ```
 helm update
 ```
 ```
-helm install caretta --namespace caretta --create-namespace gc/caretta
+helm install caretta --namespace caretta --create-namespace groundcover/caretta
 ```
 
 ### Configuration
