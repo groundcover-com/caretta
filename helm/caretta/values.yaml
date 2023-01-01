@@ -52,7 +52,7 @@ priorityClassName:
 
 victoria-metrics-single:
   server:
-    fullnameOverride: carreta-vm
+    fullnameOverride: caretta-vm
     persistentVolume:
        enabled: false
        size: 16Gi # change enabled to true if you pv is required
@@ -95,7 +95,7 @@ grafana:
       - name: Prometheus
         type: prometheus
         access: proxy
-        url: "http://carreta-vm:8428"
+        url: "http://caretta-vm:8428"
         editable: "true"
   
   dashboardProviders:
