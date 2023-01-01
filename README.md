@@ -34,7 +34,7 @@ As simple as installing a helm chart. It is recommended to install Caretta in a 
 helm repo add groundcover https://helm.groundcover.com/
 ```
 ```
-helm update
+helm repo update
 ```
 ```
 helm install caretta --namespace caretta --create-namespace groundcover/caretta
