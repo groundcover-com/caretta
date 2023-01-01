@@ -22,14 +22,14 @@
 
 Caretta is a lightweight, standalone tool that instantly creates a visual network map of the services running in your cluster.
 
-Carreta leverages eBPF to efficiently maps all service network interactions in a K8s  cluster, and Grafana to query and visualize the collected data.
+Carreta leverages eBPF to efficiently map all service network interactions in a K8s  cluster, and Grafana to query and visualize the collected data.
 
 Carreta is built to be efficient, with a minimal footprint on the system, and does not require any modifications or installation on the cluster.
 
 Caretta demonstrates the power of using eBPF for observability solutions, which is our vision at <a href="https://groundcover.com">groundcover</a>. If you're interested in understanding how Caretta is built, head over to our <a href="">Caretta blog post!</a>
 
 ## Installing Caretta
-As simple as installing an helm chart. It is recommended to install Caretta in a new, unique namespace.
+As simple as installing a helm chart. It is recommended to install Caretta in a new, unique namespace.
 ```
 helm repo add groundcover https://helm.groundcover.com/
 ```
@@ -83,7 +83,7 @@ Caretta's main metric is `caretta_links_observed` (Gauge). It uses the following
 Along those labels, Caretta uses other labels for Grafana's Node Graph panel.
 
 #### Example metric data
-This example shows a connection between a client named `checkoutservice`, controlled by a deployment, to a service named `productioncatalogservice` on port 3550, prom the perspective of the client. Total bytes sent by the client in this connection is 2537 bytes.
+This example shows a connection between a client named `checkoutservice`, controlled by a deployment, to a service named `productioncatalogservice` on port 3550, from the perspective of the client. Total bytes sent by the client in this connection is 2537 bytes.
 ```
 caretta_links_observed{client_id="1074587981",client_kind="Deployment",client_name="checkoutservice",client_namespace="demo-ng",link_id="198768460",role="1",server_id="1112713827",server_kind="Service",server_name="productcatalogservice",server_namespace="demo-ng",server_port="3550"} 2537
 ```
