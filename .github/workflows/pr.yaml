@@ -22,15 +22,15 @@ jobs:
           cache-dependency-path: go.sum
       -
         name: Install Dependencies
-        run: go mod download -x
+        run: |
+          go mod download -x
+          make generate_ebpf_in_docker
       -
         name: Run Tests
         run: go test ./...
       -
         name: Build Binary
-        run: |
-          make generate_ebpf_in_docker
-          make build
+        run: make build
       -
         name: Build Image
         run: docker build --tag caretta .
