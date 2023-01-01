@@ -118,3 +118,5 @@ grafana:
   grafana.ini:
     auth.anonymous:
       enabled: true
+  adminUser: "admin"
+  adminPassword: "admin"
