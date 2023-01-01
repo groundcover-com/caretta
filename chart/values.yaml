@@ -4,9 +4,9 @@ prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
 
 image:
-  repository: 125608480246.dkr.ecr.eu-west-3.amazonaws.com/caretta
+  repository: quay.io/groundcover/caretta
   pullPolicy: Always
-  tag: latest
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
