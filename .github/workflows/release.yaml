@@ -1,10 +1,12 @@
-name: pr
+name: release
 
 on:
- pull_request:
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
-  build:
+  goreleaser:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -42,11 +44,33 @@ jobs:
         name: Build Binary
         run: make build
       -
-        name: Build Docker Image
+        name: Build & Push Docker Image
         uses: docker/build-push-action@v3
         with:
           context: .
-          push: false
+          push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: quay.io/groundcover/caretta
+          tags: quay.io/groundcover/caretta:${{ github.ref_name	 }}
+      -
+        name: Checkout Helm Repo
+        uses: actions/checkout@v3
+        with:
+          path: helm-repo
+          repository: groundcover-com/charts
+          token: ${{ secrets.HELM_CHARTS_REPO_KEY }}
+      -
+        name: Publish Chart
+        working-directory: helm-repo
+        env:
+          GITHUB_TAG: ${{ github.ref_name	 }}
+        run: |
+          version=${GITHUB_TAG#v}
+          helm lint ../chart
+          helm package --version ${version} --app-version ${GITHUB_TAG} ../chart
+          helm repo index --url https://helm.groundcover.com .
+          git config user.name "ci-groundcover"
+          git config user.email "ci@groundcover.com"
+          git add .
+          git commit -m "Added caretta ${version} chart"
+          git push
