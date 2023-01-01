@@ -46,7 +46,7 @@ build_builder_docker:
 	docker build --tag ${IMAGE}:${VERSION} -f ebpf-builder-with-bpftool.Dockerfile .
 
 .PHONY: generate_ebpf_in_docker
-generate_ebpf_in_docker: build_builder_docker
+generate_ebpf_in_docker: build_builder_docker ${BIN_DIR}
 	${DOCKER_BIN} run \
 		-v ${REPODIR}:/tmp/caretta \
 		-w /tmp/${PROJECT_DIRNAME} \
