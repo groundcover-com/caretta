@@ -14,6 +14,13 @@ jobs:
         name: Checkout
         uses: actions/checkout@v3
       -
+        name: Login to Quay.io
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      -
         name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -32,5 +39,8 @@ jobs:
         name: Build Binary
         run: make build
       -
-        name: Build Image
-        run: docker build --tag caretta .
+        name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: quay.io/groundcover/caretta
