@@ -1,0 +1,36 @@
+name: pr
+
+on:
+ pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          cache: true
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      -
+        name: Install Dependencies
+        run: go mod download -x
+      -
+        name: Run Tests
+        run: go test ./...
+      -
+        name: Build Binary
+        run: |
+          make generate_ebpf_in_docker
+          make build
+      -
+        name: Build Image
+        run: docker build --tag caretta .
