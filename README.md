@@ -64,7 +64,7 @@ To access Grafana, port-forward port 3000 from the Grafana pod in Caretta's name
 kubectl port-forward --namespace caretta <grafana-pod-name> 3000:3000
 ```
 
-Anonymous mode is enabled by default and the default dashboard is accessibly with no login needed. The admin user's credantials are kept as cluster secrets.
+Anonymous mode is enabled by default and the default dashboard is accessible with no login needed. Default administrator's credentials are admin:admin.
 
 ### Scraping Caretta's metrics
 
