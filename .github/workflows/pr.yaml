@@ -23,8 +23,9 @@ jobs:
       -
         name: Install Dependencies
         run: |
-          go mod download -x
+          bpftool version
           make generate_ebpf_in_docker
+          go mod download -x
       -
         name: Run Tests
         run: go test ./...
