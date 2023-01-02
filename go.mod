@@ -1,17 +1,16 @@
 module github.com/groundcover-com/caretta
 
-go 1.18
-
-require (
-	k8s.io/api v0.26.0
-	k8s.io/apimachinery v0.26.0
-)
-
-require k8s.io/client-go v0.26.0
+go 1.19
 
 require (
 	github.com/cilium/ebpf v0.9.3
+	github.com/google/uuid v1.3.0
+	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/prometheus/client_golang v1.14.0
+	github.com/stretchr/testify v1.8.1
+	k8s.io/api v0.26.0
+	k8s.io/apimachinery v0.26.0
+	k8s.io/client-go v0.26.0
 )
 
 require (
@@ -58,10 +57,4 @@ require (
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
-)
-
-require (
-	github.com/google/uuid v1.3.0
-	github.com/hashicorp/golang-lru/v2 v2.0.1
-	github.com/stretchr/testify v1.8.1
 )

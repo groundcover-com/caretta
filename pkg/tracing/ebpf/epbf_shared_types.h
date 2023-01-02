@@ -1,6 +1,6 @@
 #ifndef __EBPF_SHARED_TYPES_H__
 #define __EBPF_SHARED_TYPES_H__
-#include <vmlinux.h>
+#include "vmlinux.h"
 
 // helper defs for inet_sock. These are defined in inet_sock.h, but not copied
 // automatically to vmlinux.h

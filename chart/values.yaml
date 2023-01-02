@@ -3,10 +3,13 @@ prometheusPort: 7117
 prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
 
+rbac:
+  pspEnabled: true
+  sccEnabled: true
 image:
-  repository: 125608480246.dkr.ecr.eu-west-3.amazonaws.com/caretta
+  repository: quay.io/groundcover/caretta
   pullPolicy: Always
-  tag: latest
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -121,4 +124,4 @@ grafana:
     dashboards:
       default_home_dashboard_path: /var/lib/grafana/dashboards/default/dashboard.json 
   adminUser: "admin"
-  adminPassword: "admin"
+  adminPassword: "caretta"

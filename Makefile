@@ -24,7 +24,6 @@ ${BIN_DIR}:
 .PHONY: download_libbpf_headers
 download_libbpf_headers: 
 	${REPODIR}/${BUILD_SCRIPTS_DIRECTORY}/download_libbpf_headers.sh
-	bpftool btf dump file /sys/kernel/btf/vmlinux format c > /tmp/caretta_extra/libbpf_headers/vmlinux.h
 
 .PHONY: generate_ebpf
 generate_ebpf: ${BPF2GO_BINARY}_${BPF2GO_VERSION} \
@@ -47,7 +46,7 @@ build_builder_docker:
 	docker build --tag ${IMAGE}:${VERSION} -f ebpf-builder-with-bpftool.Dockerfile .
 
 .PHONY: generate_ebpf_in_docker
-generate_ebpf_in_docker: build_builder_docker
+generate_ebpf_in_docker: build_builder_docker ${BIN_DIR}
 	${DOCKER_BIN} run \
 		-v ${REPODIR}:/tmp/caretta \
 		-w /tmp/${PROJECT_DIRNAME} \

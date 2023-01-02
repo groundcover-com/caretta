@@ -3,6 +3,27 @@ kind: ClusterRole
 metadata:
   name: {{ include "caretta.fullname" . }}
 rules:
+{{- if and .Values.rbac.pspEnabled (.Capabilities.APIVersions.Has "policy/v1beta1") }}
+  - apiGroups:
+    - policy
+    - extensions
+    resourceNames:
+    - {{ template "caretta.fullname" . }}
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+{{- end }}
+{{- if and .Values.rbac.sccEnabled (.Capabilities.APIVersions.Has "security.openshift.io/v1")}}
+  - apiGroups:
+    - security.openshift.io
+    resources:
+    - securitycontextconstraints
+    verbs:
+    - use
+    resourceNames:
+    - privileged
+{{- end }}
   - verbs:
       - get
       - list
