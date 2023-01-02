@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/cilium/ebpf"
 	"github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/groundcover-com/caretta/pkg/tracing"
 
@@ -46,7 +45,7 @@ type Probes interface {
 
 type LinksTracer struct {
 	ebpfObjects Probes
-	connections *ebpf.Map
+	connections IEbpfMap
 	resolver    IPResolver
 }
 
@@ -56,7 +55,7 @@ func NewTracer(resolver *k8s.K8sIPResolver) LinksTracer {
 	return tracer
 }
 
-func NewTracerWithObjs(resolver IPResolver, connections *ebpf.Map, probes Probes) LinksTracer {
+func NewTracerWithObjs(resolver IPResolver, connections IEbpfMap, probes Probes) LinksTracer {
 	return LinksTracer{
 		ebpfObjects: probes,
 		connections: connections,
@@ -69,8 +68,9 @@ func (tracer *LinksTracer) Start() error {
 	if err != nil {
 		return err
 	}
+
 	tracer.ebpfObjects = &objs
-	tracer.connections = connMap
+	tracer.connections = &EbpfMap{innerMap: connMap}
 	return nil
 }
 
