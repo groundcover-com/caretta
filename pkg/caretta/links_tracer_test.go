@@ -1,14 +1,93 @@
 package caretta_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/groundcover-com/caretta/pkg/caretta"
 
-	"github.com/cilium/ebpf"
 	"github.com/groundcover-com/caretta/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 )
+
+// type ConnectionsMapIterator interface {
+// 	Next(interface{}, interface{}) bool
+// }
+
+// type ConnectionsMap interface {
+// 	Lookup(interface{}, interface{}) error
+// 	Iterate() *ConnectionsMapIterator
+// 	Delete(key interface{}) error
+// }
+
+// Defining a mock of a map. This is not a complete implementation of a map with iterator
+type MockConnectionsMapIterator struct {
+	InnerMap map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats
+	keys     []caretta.ConnectionIdentifier
+	count    int
+}
+
+func (mi *MockConnectionsMapIterator) Next(conn interface{}, throughput interface{}) bool {
+	assertedConn, ok := conn.(*caretta.ConnectionIdentifier)
+	if !ok {
+		return false
+	}
+	assertedThroughput, ok := throughput.(*caretta.ConnectionThroughputStats)
+	if !ok {
+		return false
+	}
+	for mi.count < len(mi.keys) {
+		*assertedConn = mi.keys[mi.count]
+		*assertedThroughput = mi.InnerMap[*assertedConn]
+		mi.count++
+		return true
+	}
+
+	return false
+}
+
+type MockConnectionsMap struct {
+	InnerMap map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats
+}
+
+func NewMockConnectionsMap() *MockConnectionsMap {
+	return &MockConnectionsMap{InnerMap: make(map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats)}
+}
+
+func (m *MockConnectionsMap) Lookup(conn interface{}, throughput interface{}) error {
+	assertedConn, ok := conn.(*caretta.ConnectionIdentifier)
+	if !ok {
+		return errors.New("wrong type for Lookup")
+	}
+	assertedThroughput, ok := throughput.(*caretta.ConnectionThroughputStats)
+	if !ok {
+		return errors.New("wrong type for Lookup")
+	}
+	*assertedThroughput, ok = m.InnerMap[*assertedConn]
+	if !ok {
+		return errors.New("Key not in map")
+	}
+	return nil
+}
+
+func (m *MockConnectionsMap) Iterate() caretta.ConnectionsMapIterator {
+	keys := make([]caretta.ConnectionIdentifier, 0, len(m.InnerMap))
+	for ci := range m.InnerMap {
+		keys = append(keys, ci)
+	}
+
+	return &MockConnectionsMapIterator{InnerMap: m.InnerMap, keys: keys, count: 0}
+}
+
+func (m *MockConnectionsMap) Delete(key interface{}) error {
+	assertedKey, ok := key.(*caretta.ConnectionIdentifier)
+	if !ok {
+		return errors.New("wrong type in delete")
+	}
+	delete(m.InnerMap, *assertedKey)
+	return nil
+}
 
 type MockResolver struct{}
 
@@ -24,16 +103,6 @@ func (resolver *MockResolver) StartWatching() error {
 	return nil
 }
 func (resolver *MockResolver) StopWatching() {}
-
-func createMap() (*ebpf.Map, error) {
-	return ebpf.NewMap(&ebpf.MapSpec{
-		Name:       "ConnectionsMock",
-		Type:       ebpf.Hash,
-		KeySize:    24,
-		ValueSize:  24,
-		MaxEntries: 8,
-	})
-}
 
 type testConnection struct {
 	connId     caretta.ConnectionIdentifier
@@ -290,15 +359,13 @@ func TestAggregations(t *testing.T) {
 	for _, test := range aggregationTests {
 		t.Run(test.description, func(t *testing.T) {
 			assert := assert.New(t)
-			m, err := createMap()
-			assert.NoError(err)
-			defer m.Close()
+			m := NewMockConnectionsMap()
 
 			tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 			pastLinks := make(map[caretta.NetworkLink]uint64)
 			var currentLinks map[caretta.NetworkLink]uint64
 			for _, connection := range test.connections {
-				m.Update(connection.connId, connection.throughput, ebpf.UpdateAny)
+				m.InnerMap[connection.connId] = connection.throughput
 				_, currentLinks = tracer.TracesPollingIteration(pastLinks)
 			}
 			resultThroughput, ok := currentLinks[test.expectedLink]
@@ -313,15 +380,7 @@ func TestDeletion_ActiveConnection_NotDeleted(t *testing.T) {
 	assert := assert.New(t)
 
 	// Arrange mock map, initial connection
-	m, err := ebpf.NewMap(&ebpf.MapSpec{
-		Name:       "ConnectionsMock",
-		Type:       ebpf.Hash,
-		KeySize:    24,
-		ValueSize:  24,
-		MaxEntries: 8,
-	})
-	assert.NoError(err)
-	defer m.Close()
+	m := NewMockConnectionsMap()
 
 	conn1 := caretta.ConnectionIdentifier{
 		Id:    1,
@@ -336,14 +395,17 @@ func TestDeletion_ActiveConnection_NotDeleted(t *testing.T) {
 	pastLinks := make(map[caretta.NetworkLink]uint64)
 
 	// Act
-	m.Update(conn1, throughput1, ebpf.UpdateAny)
+	m.InnerMap[conn1] = throughput1
 	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
 
 	// Assert
 	resultThroughput, ok := currentLinks[serverLink]
 	assert.True(ok, "link not in map, map is %v", currentLinks)
 	assert.Equal(throughput1.BytesSent, resultThroughput)
-	err = m.Lookup(&conn1, &resultThroughput)
+
+	var testThroughput caretta.ConnectionThroughputStats
+
+	err := m.Lookup(&conn1, &testThroughput)
 	assert.NoError(err, "connection should stay on the map")
 }
 
@@ -351,15 +413,7 @@ func TestDeletion_InactiveConnection_AddedToPastLinksAndRemovedFromMap(t *testin
 	assert := assert.New(t)
 
 	// Arrange mock map, initial connection
-	m, err := ebpf.NewMap(&ebpf.MapSpec{
-		Name:       "ConnectionsMock",
-		Type:       ebpf.Hash,
-		KeySize:    24,
-		ValueSize:  24,
-		MaxEntries: 8,
-	})
-	assert.NoError(err)
-	defer m.Close()
+	m := NewMockConnectionsMap()
 
 	conn1 := caretta.ConnectionIdentifier{
 		Id:    1,
@@ -368,19 +422,18 @@ func TestDeletion_InactiveConnection_AddedToPastLinksAndRemovedFromMap(t *testin
 		Role:  caretta.ServerConnectionRole,
 	}
 	throughput1 := activeThroughput
-	m.Update(conn1, throughput1, ebpf.UpdateAny)
+	m.InnerMap[conn1] = throughput1
 
 	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
 	pastLinks := make(map[caretta.NetworkLink]uint64)
 
-	pastLinks, currentLinks := tracer.TracesPollingIteration(pastLinks)
-	resultThroughput := currentLinks[serverLink]
+	pastLinks, _ = tracer.TracesPollingIteration(pastLinks)
 
 	// Act: update the throughput so the connection is inactive, and iterate
 	throughput2 := inactiveThroughput
-	m.Update(conn1, throughput2, ebpf.UpdateAny)
-	pastLinks, currentLinks = tracer.TracesPollingIteration(pastLinks)
+	m.InnerMap[conn1] = throughput2
+	pastLinks, currentLinks := tracer.TracesPollingIteration(pastLinks)
 
 	// Assert: check the past connection is both in past links and in current links
 	resultThroughput, ok := currentLinks[serverLink]
@@ -388,23 +441,17 @@ func TestDeletion_InactiveConnection_AddedToPastLinksAndRemovedFromMap(t *testin
 	assert.Equal(throughput1.BytesSent, resultThroughput)
 	_, ok = pastLinks[serverLink]
 	assert.True(ok, "inactive link not in past links: %v", pastLinks)
-	err = m.Lookup(&conn1, &resultThroughput)
-	assert.Error(err, "inactive connection not deleted from connections map")
+
+	var testThroughput caretta.ConnectionThroughputStats
+	err := m.Lookup(&conn1, &testThroughput)
+	assert.Error(err, fmt.Sprintf("inactive connection not deleted from connections map, val is %d", testThroughput.BytesSent))
 }
 
 func TestDeletion_InactiveConnection_NewConnectionAfterDeletionUpdatesCorrectly(t *testing.T) {
 	assert := assert.New(t)
 
 	// Arrange mock map, initial connection, inactive connection
-	m, err := ebpf.NewMap(&ebpf.MapSpec{
-		Name:       "ConnectionsMock",
-		Type:       ebpf.Hash,
-		KeySize:    24,
-		ValueSize:  24,
-		MaxEntries: 8,
-	})
-	assert.NoError(err)
-	defer m.Close()
+	m := NewMockConnectionsMap()
 
 	conn1 := caretta.ConnectionIdentifier{
 		Id:    1,
@@ -413,7 +460,7 @@ func TestDeletion_InactiveConnection_NewConnectionAfterDeletionUpdatesCorrectly(
 		Role:  caretta.ServerConnectionRole,
 	}
 	throughput1 := activeThroughput
-	m.Update(conn1, throughput1, ebpf.UpdateAny)
+	m.InnerMap[conn1] = throughput1
 
 	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
@@ -421,12 +468,12 @@ func TestDeletion_InactiveConnection_NewConnectionAfterDeletionUpdatesCorrectly(
 
 	// update the throughput so the connection is inactive
 	throughput2 := inactiveThroughput
-	m.Update(conn1, throughput2, ebpf.UpdateAny)
+	m.InnerMap[conn1] = throughput2
 	pastLinks, _ = tracer.TracesPollingIteration(pastLinks)
 
 	// Act: new connection, same link
 	throughput3 := activeThroughput
-	m.Update(conn1, throughput3, ebpf.UpdateAny)
+	m.InnerMap[conn1] = throughput3
 	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
 
 	// Assert the new connection is aggregated correctly
