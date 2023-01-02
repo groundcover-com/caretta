@@ -3,6 +3,9 @@ prometheusPort: 7117
 prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
 
+rbac:
+  pspEnabled: true
+
 image:
   repository: quay.io/groundcover/caretta
   pullPolicy: Always
@@ -51,8 +54,6 @@ affinity: {}
 priorityClassName:
 
 victoria-metrics-single:
-  rbac:
-    pspEnabled: false
   server:
     fullnameOverride: caretta-vm
     persistentVolume:
@@ -90,8 +91,6 @@ victoria-metrics-single:
                 target_label: caretta_node
 
 grafana:
-  rbac:
-    pspEnabled: false
   datasources:  
     datasources.yaml:
       apiVersion: 1
