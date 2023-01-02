@@ -45,7 +45,7 @@ type Probes interface {
 
 type LinksTracer struct {
 	ebpfObjects Probes
-	connections ConnectionsMap
+	connections IEbpfMap
 	resolver    IPResolver
 }
 
@@ -55,7 +55,7 @@ func NewTracer(resolver *k8s.K8sIPResolver) LinksTracer {
 	return tracer
 }
 
-func NewTracerWithObjs(resolver IPResolver, connections ConnectionsMap, probes Probes) LinksTracer {
+func NewTracerWithObjs(resolver IPResolver, connections IEbpfMap, probes Probes) LinksTracer {
 	return LinksTracer{
 		ebpfObjects: probes,
 		connections: connections,

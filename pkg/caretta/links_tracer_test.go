@@ -61,7 +61,7 @@ func (m *MockConnectionsMap) Lookup(conn interface{}, throughput interface{}) er
 	return nil
 }
 
-func (m *MockConnectionsMap) Iterate() caretta.ConnectionsMapIterator {
+func (m *MockConnectionsMap) Iterate() caretta.IEbpfMapIterator {
 	keys := make([]caretta.ConnectionIdentifier, 0, len(m.innerMap))
 	for ci := range m.innerMap {
 		keys = append(keys, ci)

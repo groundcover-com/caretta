@@ -2,13 +2,13 @@ package caretta
 
 import "github.com/cilium/ebpf"
 
-type ConnectionsMapIterator interface {
+type IEbpfMapIterator interface {
 	Next(interface{}, interface{}) bool
 }
 
-type ConnectionsMap interface {
+type IEbpfMap interface {
 	Lookup(interface{}, interface{}) error
-	Iterate() ConnectionsMapIterator
+	Iterate() IEbpfMapIterator
 	Delete(interface{}) error
 }
 
@@ -24,7 +24,7 @@ func (m *EbpfMap) Lookup(key interface{}, val interface{}) error {
 	return m.innerMap.Lookup(key, val)
 }
 
-func (m *EbpfMap) Iterate() ConnectionsMapIterator {
+func (m *EbpfMap) Iterate() IEbpfMapIterator {
 	return &EbpfMapItertor{innerIterator: m.innerMap.Iterate()}
 }
 
