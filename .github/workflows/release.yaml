@@ -37,9 +37,6 @@ jobs:
         run: |
           make generate_ebpf_in_docker
           go mod download -x
-      # -
-      #   name: Run Tests
-      #   run: go test ./...
       -
         name: Build Binary
         run: make build
