@@ -5,7 +5,7 @@ pollIntervalSeconds: 5
 
 rbac:
   pspEnabled: true
-
+  sccEnabled: true
 image:
   repository: quay.io/groundcover/caretta
   pullPolicy: Always
