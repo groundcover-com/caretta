@@ -51,6 +51,8 @@ affinity: {}
 priorityClassName:
 
 victoria-metrics-single:
+  rbac:
+    pspEnabled: false
   server:
     fullnameOverride: caretta-vm
     persistentVolume:
@@ -88,6 +90,8 @@ victoria-metrics-single:
                 target_label: caretta_node
 
 grafana:
+  rbac:
+    pspEnabled: false
   datasources:  
     datasources.yaml:
       apiVersion: 1
