@@ -13,11 +13,11 @@ type ConnectionsMap interface {
 }
 
 type EbpfMap struct {
-	innerMap ebpf.Map
+	innerMap *ebpf.Map
 }
 
 type EbpfMapItertor struct {
-	innerIterator ebpf.MapIterator
+	innerIterator *ebpf.MapIterator
 }
 
 func (m *EbpfMap) Lookup(key interface{}, val interface{}) error {
@@ -25,7 +25,7 @@ func (m *EbpfMap) Lookup(key interface{}, val interface{}) error {
 }
 
 func (m *EbpfMap) Iterate() ConnectionsMapIterator {
-	return &EbpfMapItertor{innerIterator: *m.innerMap.Iterate()}
+	return &EbpfMapItertor{innerIterator: m.innerMap.Iterate()}
 }
 
 func (m *EbpfMap) Delete(key interface{}) error {

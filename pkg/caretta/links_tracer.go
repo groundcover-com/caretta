@@ -70,7 +70,7 @@ func (tracer *LinksTracer) Start() error {
 	}
 
 	tracer.ebpfObjects = &objs
-	tracer.connections = &EbpfMap{innerMap: *connMap}
+	tracer.connections = &EbpfMap{innerMap: connMap}
 	return nil
 }
 

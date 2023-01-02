@@ -11,19 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// type ConnectionsMapIterator interface {
-// 	Next(interface{}, interface{}) bool
-// }
-
-// type ConnectionsMap interface {
-// 	Lookup(interface{}, interface{}) error
-// 	Iterate() *ConnectionsMapIterator
-// 	Delete(key interface{}) error
-// }
-
 // Defining a mock of a map. This is not a complete implementation of a map with iterator
 type MockConnectionsMapIterator struct {
-	InnerMap map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats
+	innerMap map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats
 	keys     []caretta.ConnectionIdentifier
 	count    int
 }
@@ -39,7 +29,7 @@ func (mi *MockConnectionsMapIterator) Next(conn interface{}, throughput interfac
 	}
 	for mi.count < len(mi.keys) {
 		*assertedConn = mi.keys[mi.count]
-		*assertedThroughput = mi.InnerMap[*assertedConn]
+		*assertedThroughput = mi.innerMap[*assertedConn]
 		mi.count++
 		return true
 	}
@@ -48,11 +38,11 @@ func (mi *MockConnectionsMapIterator) Next(conn interface{}, throughput interfac
 }
 
 type MockConnectionsMap struct {
-	InnerMap map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats
+	innerMap map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats
 }
 
 func NewMockConnectionsMap() *MockConnectionsMap {
-	return &MockConnectionsMap{InnerMap: make(map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats)}
+	return &MockConnectionsMap{innerMap: make(map[caretta.ConnectionIdentifier]caretta.ConnectionThroughputStats)}
 }
 
 func (m *MockConnectionsMap) Lookup(conn interface{}, throughput interface{}) error {
@@ -64,7 +54,7 @@ func (m *MockConnectionsMap) Lookup(conn interface{}, throughput interface{}) er
 	if !ok {
 		return errors.New("wrong type for Lookup")
 	}
-	*assertedThroughput, ok = m.InnerMap[*assertedConn]
+	*assertedThroughput, ok = m.innerMap[*assertedConn]
 	if !ok {
 		return errors.New("Key not in map")
 	}
@@ -72,12 +62,12 @@ func (m *MockConnectionsMap) Lookup(conn interface{}, throughput interface{}) er
 }
 
 func (m *MockConnectionsMap) Iterate() caretta.ConnectionsMapIterator {
-	keys := make([]caretta.ConnectionIdentifier, 0, len(m.InnerMap))
-	for ci := range m.InnerMap {
+	keys := make([]caretta.ConnectionIdentifier, 0, len(m.innerMap))
+	for ci := range m.innerMap {
 		keys = append(keys, ci)
 	}
 
-	return &MockConnectionsMapIterator{InnerMap: m.InnerMap, keys: keys, count: 0}
+	return &MockConnectionsMapIterator{innerMap: m.innerMap, keys: keys, count: 0}
 }
 
 func (m *MockConnectionsMap) Delete(key interface{}) error {
@@ -85,8 +75,12 @@ func (m *MockConnectionsMap) Delete(key interface{}) error {
 	if !ok {
 		return errors.New("wrong type in delete")
 	}
-	delete(m.InnerMap, *assertedKey)
+	delete(m.innerMap, *assertedKey)
 	return nil
+}
+
+func (m *MockConnectionsMap) Update(key caretta.ConnectionIdentifier, value caretta.ConnectionThroughputStats) {
+	m.innerMap[key] = value
 }
 
 type MockResolver struct{}
@@ -365,7 +359,7 @@ func TestAggregations(t *testing.T) {
 			pastLinks := make(map[caretta.NetworkLink]uint64)
 			var currentLinks map[caretta.NetworkLink]uint64
 			for _, connection := range test.connections {
-				m.InnerMap[connection.connId] = connection.throughput
+				m.Update(connection.connId, connection.throughput)
 				_, currentLinks = tracer.TracesPollingIteration(pastLinks)
 			}
 			resultThroughput, ok := currentLinks[test.expectedLink]
@@ -395,7 +389,7 @@ func TestDeletion_ActiveConnection_NotDeleted(t *testing.T) {
 	pastLinks := make(map[caretta.NetworkLink]uint64)
 
 	// Act
-	m.InnerMap[conn1] = throughput1
+	m.Update(conn1, throughput1)
 	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
 
 	// Assert
@@ -422,7 +416,7 @@ func TestDeletion_InactiveConnection_AddedToPastLinksAndRemovedFromMap(t *testin
 		Role:  caretta.ServerConnectionRole,
 	}
 	throughput1 := activeThroughput
-	m.InnerMap[conn1] = throughput1
+	m.Update(conn1, throughput1)
 
 	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
@@ -432,7 +426,7 @@ func TestDeletion_InactiveConnection_AddedToPastLinksAndRemovedFromMap(t *testin
 
 	// Act: update the throughput so the connection is inactive, and iterate
 	throughput2 := inactiveThroughput
-	m.InnerMap[conn1] = throughput2
+	m.Update(conn1, throughput2)
 	pastLinks, currentLinks := tracer.TracesPollingIteration(pastLinks)
 
 	// Assert: check the past connection is both in past links and in current links
@@ -460,7 +454,7 @@ func TestDeletion_InactiveConnection_NewConnectionAfterDeletionUpdatesCorrectly(
 		Role:  caretta.ServerConnectionRole,
 	}
 	throughput1 := activeThroughput
-	m.InnerMap[conn1] = throughput1
+	m.Update(conn1, throughput1)
 
 	tracer := caretta.NewTracerWithObjs(&MockResolver{}, m, nil)
 
@@ -468,12 +462,12 @@ func TestDeletion_InactiveConnection_NewConnectionAfterDeletionUpdatesCorrectly(
 
 	// update the throughput so the connection is inactive
 	throughput2 := inactiveThroughput
-	m.InnerMap[conn1] = throughput2
+	m.Update(conn1, throughput2)
 	pastLinks, _ = tracer.TracesPollingIteration(pastLinks)
 
 	// Act: new connection, same link
 	throughput3 := activeThroughput
-	m.InnerMap[conn1] = throughput3
+	m.Update(conn1, throughput3)
 	_, currentLinks := tracer.TracesPollingIteration(pastLinks)
 
 	// Assert the new connection is aggregated correctly
