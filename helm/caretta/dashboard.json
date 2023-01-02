@@ -59,7 +59,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "increase((sum by (id, title, subTitle, detail__kind, arc__color) (label_replace((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"detail__kind\", \"$1\", \"server_kind\", \"(.*)\"), \"subTitle\", \"$1\", \"server_namespace\", \"(.*)\"), \"title\", \"$1\", \"server_name\", \"(.*)\"), \"id\", \"$1\", \"server_id\", \"(.*)\") or label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"detail__kind\", \"$1\", \"client_kind\", \"(.*)\"), \"subTitle\", \"$1\", \"client_namespace\", \"(.*)\"), \"title\", \"$1\", \"client_name\", \"(.*)\"), \"id\", \"$1\", \"client_id\", \"(.*)\")  ), \"arc__color\", \"1\", \"link_id\", \"(.*)\")) )[$__range])  > 0",
+          "expr": "increase((sum by (id, title, subTitle, detail__kind, arc__color) (label_replace((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"detail__kind\", \"$1\", \"server_kind\", \"(.*)\"), \"subTitle\", \"$1\", \"server_namespace\", \"(.*)\"), \"title\", \"$1\", \"server_name\", \"(.*)\"), \"id\", \"$1\", \"server_id\", \"(.*)\") or label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"detail__kind\", \"$1\", \"client_kind\", \"(.*)\"), \"subTitle\", \"$1\", \"client_namespace\", \"(.*)\"), \"title\", \"$1\", \"client_name\", \"(.*)\"), \"id\", \"$1\", \"client_id\", \"(.*)\")  ), \"arc__color\", \"1\", \"link_id\", \"(.*)\")) )[$__range:$__interval])  > 0",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -73,7 +73,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "increase((sum by (id, source, target, mainStat) ((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"id\", \"$1\", \"link_id\", \"(.*)\"), \"source\", \"$1\", \"client_id\", \"(.*)\"), \"target\", \"$1\", \"server_id\", \"(.*)\"), \"mainStat\", \"$1\", \"server_port\", \"(.*)\"))) )[$__range]) > 0",
+          "expr": "increase((sum by (id, source, target, mainStat) ((label_replace(label_replace(label_replace(label_replace((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"}), \"id\", \"$1\", \"link_id\", \"(.*)\"), \"source\", \"$1\", \"client_id\", \"(.*)\"), \"target\", \"$1\", \"server_id\", \"(.*)\"), \"mainStat\", \"$1\", \"server_port\", \"(.*)\"))) )[$__range:$__interval]) > 0",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -144,7 +144,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (server_port) (increase((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"})[$__range])) > 0",
+          "expr": "sum by (server_port) (increase((caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\"})[$__range:$__interval])) > 0",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -171,7 +171,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<table style=\"width:100%; height:100%;border:0px solid black;\">\n     <td style=\"text-align: center;vertical-align: middle;border:0px solid black; \">\n<div style=\"text-align: center\">\n<p align=\"center\">\n  <img src=\"https://raw.githubusercontent.com/groundcover-com/caretta/udirot/sc-6491/add-readme/images/logo.svg?token=GHSAT0AAAAAAB2WEAZRNZKPYWQ6GBDQLDR2Y5NNYGA\" width=\"75%\" alt=\"caretta\" title=\"caretta\" />\n  <h4>by <a href=\"https://www.groundcover.com\">groundcover</h4>\n\n  \n  [![slack](https://img.shields.io/badge/slack-groundcover-yellowgreen.svg?logo=slack)](http://www.groundcover.com/join-slack)\n  \n</div>\n</p>\n</div>\n</td>\n</table>\n",
+        "content": "<table style=\"width:100%; height:100%;border:0px solid black;\">\n     <td style=\"text-align: center;vertical-align: middle;border:0px solid black; \">\n<div style=\"text-align: center\">\n<p align=\"center\">\n  <img src=\"https://raw.githubusercontent.com/groundcover-com/caretta/main/images/logo.svg\" width=\"75%\" alt=\"caretta\" title=\"caretta\" />\n  <h4>by <a href=\"https://www.groundcover.com\">groundcover</h4>\n\n  \n  [![slack](https://img.shields.io/badge/slack-groundcover-yellowgreen.svg?logo=slack)](http://www.groundcover.com/join-slack)\n  \n</div>\n</p>\n</div>\n</td>\n</table>\n",
         "mode": "markdown"
       },
       "pluginVersion": "9.3.1",
@@ -236,7 +236,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(8, sum by (client_name) ((rate(caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"}[$__range]))))",
+          "expr": "topk(8, sum by (client_name) ((rate(caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\"}[$__range:$__interval]))))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "__auto",
@@ -307,7 +307,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(7, sum by (client_name, server_name) ( rate( (caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\", client_kind!~\"(node|external)\",} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\", server_kind!~\"(node|external)\"})[$__range]) ) )",
+          "expr": "topk(7, sum by (client_name, server_name) ( rate( (caretta_links_observed{client_namespace=~\"$namespace\", client_kind=~\"$kind\", client_name=~\"$workload\", server_port=~\"$port\", client_kind!~\"(node|external)\",} or caretta_links_observed{server_namespace=~\"$namespace\", server_kind=~\"$kind\", server_name=~\"$workload\", server_port=~\"$port\", server_kind!~\"(node|external)\"})[$__range:$__interval]) ) )",
           "format": "time_series",
           "instant": true,
           "legendFormat": "{{client_name}} ⮂ {{server_name}}",
