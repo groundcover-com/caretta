@@ -175,128 +175,119 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				cronJobsWatcher.Stop()
 				return
 			case podEvent, ok := <-podsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("pod").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("pod").Inc()
 						podsWatcher, err = resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("pod").Inc()
 					resolver.handlePodWatchEvent(&podEvent)
 				}
 			case nodeEvent, ok := <-nodesWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("node").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("node").Inc()
 						nodesWatcher, err = resolver.clientset.CoreV1().Nodes().Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("node").Inc()
 					resolver.handleNodeWatchEvent(&nodeEvent)
 				}
 			case replicasetsEvent, ok := <-replicasetsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("replicaset").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("replicaset").Inc()
 						replicasetsWatcher, err = resolver.clientset.AppsV1().ReplicaSets("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("replicaset").Inc()
 					resolver.handleReplicaSetWatchEvent(&replicasetsEvent)
 				}
 			case daemonsetsEvent, ok := <-daemonsetsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("daemonset").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("daemonset").Inc()
 						daemonsetsWatcher, err = resolver.clientset.AppsV1().DaemonSets("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("daemonset").Inc()
 					resolver.handleDaemonSetWatchEvent(&daemonsetsEvent)
 				}
 			case statefulsetsEvent, ok := <-statefulsetsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("statefulset").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("statefulset").Inc()
 						statefulsetsWatcher, err = resolver.clientset.AppsV1().StatefulSets("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("statefulset").Inc()
 					resolver.handleStatefulSetWatchEvent(&statefulsetsEvent)
 				}
 			case jobsEvent, ok := <-jobsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("job").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("job").Inc()
 						jobsWatcher, err = resolver.clientset.BatchV1().Jobs("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("job").Inc()
 					resolver.handleJobsWatchEvent(&jobsEvent)
 				}
 			case servicesEvent, ok := <-servicesWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("service").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("service").Inc()
 						servicesWatcher, err = resolver.clientset.CoreV1().Services("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("service").Inc()
 					resolver.handleServicesWatchEvent(&servicesEvent)
 				}
 			case deploymentsEvent, ok := <-deploymentsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("deployment").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("deployment").Inc()
 						deploymentsWatcher, err = resolver.clientset.AppsV1().Deployments("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("deployment").Inc()
 					resolver.handleDeploymentsWatchEvent(&deploymentsEvent)
 				}
 			case cronjobsEvent, ok := <-cronJobsWatcher.ResultChan():
-				if !ok {
-					watchResetsCounter.WithLabelValues("cronjob").Inc()
-					for {
+				{
+					if !ok {
+						watchResetsCounter.WithLabelValues("cronjob").Inc()
 						cronJobsWatcher, err = resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
 						if err != nil {
-							continue
+							time.Sleep(reregisterWatchSleepDuration)
 						}
-						time.Sleep(reregisterWatchSleepDuration)
+						continue
 					}
-				} else {
 					watchEventsCounter.WithLabelValues("cronjob").Inc()
 					resolver.handleCronJobsWatchEvent(&cronjobsEvent)
 				}
