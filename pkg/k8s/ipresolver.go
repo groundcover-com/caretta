@@ -23,33 +23,12 @@ import (
 const MAX_RESOLVED_DNS = 10000 // arbitrary limit
 
 var (
-	podsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_pods",
-	})
-	nodesCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_nodes",
-	})
-	replicasetsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_replicasets",
-	})
-	daemonsetsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_daemonsets",
-	})
-	statefulsetsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_statefulsets",
-	})
-	jobsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_jobs",
-	})
-	servicesCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_services",
-	})
-	deploymentsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_deployments",
-	})
-	cronjobsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "caretta_watcher_events_counter_cronjobs",
-	})
+	watchEventsCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "caretta_watcher_events_count",
+	}, []string{"object_type"})
+	watchResetsCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "caretta_watcher_resets_count",
+	}, []string{"object_type"})
 )
 
 type clusterSnapshot struct {
@@ -194,65 +173,74 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				cronJobsWatcher.Stop()
 				return
 			case podEvent, ok := <-podsWatcher.ResultChan():
-				podsCounter.Inc()
+				watchEventsCounter.WithLabelValues("pod").Inc()
 				if !ok {
 					podsWatcher, err = resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("pod").Inc()
 					continue
 				}
 				resolver.handlePodWatchEvent(&podEvent)
 			case nodeEvent, ok := <-nodesWatcher.ResultChan():
-				nodesCounter.Inc()
+				watchEventsCounter.WithLabelValues("node").Inc()
 				if !ok {
 					nodesWatcher, err = resolver.clientset.CoreV1().Nodes().Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("node").Inc()
 					continue
 				}
 				resolver.handleNodeWatchEvent(&nodeEvent)
 			case replicasetsEvent, ok := <-replicasetsWatcher.ResultChan():
-				replicasetsCounter.Inc()
+				watchEventsCounter.WithLabelValues("replicaset").Inc()
 				if !ok {
 					replicasetsWatcher, err = resolver.clientset.AppsV1().ReplicaSets("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("replicaset").Inc()
 					continue
 				}
 				resolver.handleReplicaSetWatchEvent(&replicasetsEvent)
 			case daemonsetsEvent, ok := <-daemonsetsWatcher.ResultChan():
-				daemonsetsCounter.Inc()
+				watchEventsCounter.WithLabelValues("daemonset").Inc()
 				if !ok {
 					daemonsetsWatcher, err = resolver.clientset.AppsV1().DaemonSets("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("daemonset").Inc()
 					continue
 				}
 				resolver.handleDaemonSetWatchEvent(&daemonsetsEvent)
 			case statefulsetsEvent, ok := <-statefulsetsWatcher.ResultChan():
-				statefulsetsCounter.Inc()
+				watchEventsCounter.WithLabelValues("statefulset").Inc()
 				if !ok {
 					statefulsetsWatcher, err = resolver.clientset.AppsV1().StatefulSets("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("statefulset").Inc()
 					continue
 				}
 				resolver.handleStatefulSetWatchEvent(&statefulsetsEvent)
 			case jobsEvent, ok := <-jobsWatcher.ResultChan():
-				jobsCounter.Inc()
+				watchEventsCounter.WithLabelValues("job").Inc()
 				if !ok {
 					jobsWatcher, err = resolver.clientset.BatchV1().Jobs("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("job").Inc()
 					continue
 				}
 				resolver.handleJobsWatchEvent(&jobsEvent)
 			case servicesEvent, ok := <-servicesWatcher.ResultChan():
-				servicesCounter.Inc()
+				watchEventsCounter.WithLabelValues("service").Inc()
 				if !ok {
 					servicesWatcher, err = resolver.clientset.CoreV1().Services("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("service").Inc()
 					continue
 				}
 				resolver.handleServicesWatchEvent(&servicesEvent)
 			case deploymentsEvent, ok := <-deploymentsWatcher.ResultChan():
-				deploymentsCounter.Inc()
+				watchEventsCounter.WithLabelValues("deployment").Inc()
 				if !ok {
 					deploymentsWatcher, err = resolver.clientset.AppsV1().Deployments("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("deployment").Inc()
 					continue
 				}
 				resolver.handleDeploymentsWatchEvent(&deploymentsEvent)
 			case cronjobsEvent, ok := <-cronJobsWatcher.ResultChan():
-				cronjobsCounter.Inc()
+				watchEventsCounter.WithLabelValues("cronjob").Inc()
 				if !ok {
 					cronJobsWatcher, err = resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
+					watchResetsCounter.WithLabelValues("cronjob").Inc()
 					continue
 				}
 				resolver.handleCronJobsWatchEvent(&cronjobsEvent)
