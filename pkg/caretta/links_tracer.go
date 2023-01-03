@@ -32,7 +32,7 @@ var (
 		Help: `Number of loopback connections observed in the last iteration`,
 	})
 	mapSize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "caretta_ebpf_map_size",
+		Name: "caretta_ebpf_connections_map_size",
 		Help: "number of items in the connections map iterated from user space per iteration",
 	})
 	mapDeletions = promauto.NewCounter(prometheus.CounterOpts{
@@ -169,7 +169,7 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		return
 	}
 	pastLinks[link] += throughput.BytesSent
-	mapDeletions.Inc() 
+	mapDeletions.Inc()
 }
 
 // reduce a specific connection to a general link
