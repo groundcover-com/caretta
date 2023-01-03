@@ -222,7 +222,6 @@ int handle_set_tcp_close(struct sock* sock) {
   // mark as inactive
   struct connection_identifier conn_id = {};
   struct connection_throughput_stats throughput = {};
-  struct sock_info new_info = {};
 
   if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
     return BPF_ERROR;
@@ -230,24 +229,16 @@ int handle_set_tcp_close(struct sock* sock) {
 
   struct sock_info *info = bpf_map_lookup_elem(&sock_infos, &sock);
   if (info == NULL) {
-    enum connection_role role = get_sock_role(sock);
-
-    new_info = (struct sock_info){
-        .pid = 0, // can't associate to pid anyway
-        .role = role,
-        .is_active = false,
-        .id = get_unique_id(),
-    };
-
-    bpf_map_update_elem(&sock_infos, &sock, &new_info, BPF_ANY); 
-    info = &new_info;
+    conn_id.id = get_unique_id();
+    conn_id.pid = 0; // cannot associate to PID in this state
+    conn_id.role = get_sock_role(sock);
   } else {
-    info->is_active = false;
+    conn_id.id = info->id;
+    conn_id.pid = info->pid;
+    conn_id.role = info->role;
+    bpf_map_delete_elem(&sock_infos, &sock);
   }
 
-  conn_id.pid = info->pid;
-  conn_id.id = info->id;
-  conn_id.role = info->role;
   throughput.is_active = false;
   bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
@@ -267,8 +258,7 @@ int handle_sock_set_state(struct set_state_args *args) {
       return handle_set_tcp_syn_sent(sock) == BPF_ERROR;
       break;
     }
-    case TCP_CLOSE: // fallthrough
-    case TCP_CLOSE_WAIT: {
+    case TCP_CLOSE:  {
       return handle_set_tcp_close(sock);
       break;
     }
