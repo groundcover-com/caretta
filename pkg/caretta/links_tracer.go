@@ -109,6 +109,10 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		itemsCounter += 1
 		// filter unnecessary connection
 
+		if throughput.IsActive == 0 {
+			connectionsToDelete = append(connectionsToDelete, conn)
+		}
+
 		// skip loopback connections
 		if conn.Tuple.SrcIp == conn.Tuple.DstIp && isAddressLoopback(conn.Tuple.DstIp) {
 			loopbackCounter++
@@ -123,10 +127,6 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		}
 
 		currentLinks[link] += throughput.BytesSent
-
-		if throughput.IsActive == 0 {
-			connectionsToDelete = append(connectionsToDelete, conn)
-		}
 	}
 
 	mapSize.Set(float64(itemsCounter))
