@@ -6,7 +6,6 @@ metadata:
     app: caretta
     {{- include "caretta.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: caretta
