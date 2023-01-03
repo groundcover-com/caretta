@@ -44,11 +44,12 @@ helm install caretta --namespace caretta --create-namespace groundcover/caretta
 You can configure Caretta using helm values.
 Useful values:
 * **tolreations** can be specified to make sure Caretta's eBPF-agent will run on all cluster in your nodes. *default value will tolerate common control-plane node annotations*
-* **persistentStorage.enabled** can be set to *true* if you wish to save Caretta's metrics to a persistent volume *default: false*
+* **victoria-metrics-single.server.persistentVolume.enabled** can be set to *true* if you wish to save Caretta's metrics to a persistent volume *default: false*
 * **pollIntervalSeconds** can be modified to specify the polling and publishing interval of new metrics from the kernel. *default: 5*
 
+Example yaml for overriding these values:
 ```yaml
-pollIntervalSeconds: 5.  # set metrics polling interval 
+pollIntervalSeconds: 15  # set metrics polling interval 
 
 tolerations:             # set any desired tolerations
   - key: node-role.kubernetes.io/control-plane
@@ -57,10 +58,10 @@ tolerations:             # set any desired tolerations
     
  victoria-metrics-single:
   server:
-    fullnameOverride: caretta-vm
     persistentVolume:
-       enabled: false.   # set to true to use persistent volume
+       enabled: true   # set to true to use persistent volume
 ```
+This can also be done using the --set flag on the `helm install` command.
 
 ### Uninstallation
 To uninstall, delete the helm release:
