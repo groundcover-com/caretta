@@ -169,7 +169,7 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		return
 	}
 	pastLinks[link] += throughput.BytesSent
-	mapDeletions.Inc()
+	mapDeletions.Inc() 
 }
 
 // reduce a specific connection to a general link
