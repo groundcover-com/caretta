@@ -31,6 +31,14 @@ var (
 		Name: "caretta_current_loopback_connections",
 		Help: `Number of loopback connections observed in the last iteration`,
 	})
+	mapSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "caretta_ebpf_connections_map_size",
+		Help: "number of items in the connections map iterated from user space per iteration",
+	})
+	mapDeletions = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "caretta_connection_deletions",
+		Help: "total number of deletions from the map done by the userspace",
+	})
 )
 
 type IPResolver interface {
@@ -96,8 +104,14 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 
 	entries := tracer.connections.Iterate()
 	// iterate the map from the eBPF program
+	itemsCounter := 0
 	for entries.Next(&conn, &throughput) {
+		itemsCounter += 1
 		// filter unnecessary connection
+
+		if throughput.IsActive == 0 {
+			connectionsToDelete = append(connectionsToDelete, conn)
+		}
 
 		// skip loopback connections
 		if conn.Tuple.SrcIp == conn.Tuple.DstIp && isAddressLoopback(conn.Tuple.DstIp) {
@@ -113,12 +127,9 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		}
 
 		currentLinks[link] += throughput.BytesSent
-
-		if throughput.IsActive == 0 {
-			connectionsToDelete = append(connectionsToDelete, conn)
-		}
 	}
 
+	mapSize.Set(float64(itemsCounter))
 	unRoledConnections.Set(float64(unroledCounter))
 	filteredLoopbackConnections.Set(float64(loopbackCounter))
 
@@ -158,6 +169,7 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		return
 	}
 	pastLinks[link] += throughput.BytesSent
+	mapDeletions.Inc()
 }
 
 // reduce a specific connection to a general link

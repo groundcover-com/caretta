@@ -220,10 +220,27 @@ int handle_set_tcp_syn_recv(struct sock* sock) {
 
 int handle_set_tcp_close(struct sock* sock) {
   // mark as inactive
-  struct sock_info *info = bpf_map_lookup_elem(&sock_infos, &sock);
-  if (info != NULL) {
-    info->is_active = false;
+  struct connection_identifier conn_id = {};
+  struct connection_throughput_stats throughput = {};
+
+  if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
+    return BPF_ERROR;
   }
+
+  struct sock_info *info = bpf_map_lookup_elem(&sock_infos, &sock);
+  if (info == NULL) {
+    conn_id.id = get_unique_id();
+    conn_id.pid = 0; // cannot associate to PID in this state
+    conn_id.role = get_sock_role(sock);
+  } else {
+    conn_id.id = info->id;
+    conn_id.pid = info->pid;
+    conn_id.role = info->role;
+    bpf_map_delete_elem(&sock_infos, &sock);
+  }
+
+  throughput.is_active = false;
+  bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
   return BPF_SUCCESS;
 }
@@ -241,8 +258,7 @@ int handle_sock_set_state(struct set_state_args *args) {
       return handle_set_tcp_syn_sent(sock) == BPF_ERROR;
       break;
     }
-    case TCP_CLOSE: // fallthrough
-    case TCP_CLOSE_WAIT: {
+    case TCP_CLOSE:  {
       return handle_set_tcp_close(sock);
       break;
     }
