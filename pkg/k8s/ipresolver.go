@@ -333,7 +333,7 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 		}
 	case watch.Deleted:
 		if val, ok := podEvent.Object.(*v1.Pod); ok {
-			resolver.snapshot.Pods.Delete(val)
+			resolver.snapshot.Pods.Delete(val.UID)
 		}
 	}
 }
@@ -355,7 +355,7 @@ func (resolver *K8sIPResolver) handleNodeWatchEvent(nodeEvent *watch.Event) {
 		}
 	case watch.Deleted:
 		if val, ok := nodeEvent.Object.(*v1.Node); ok {
-			resolver.snapshot.Nodes.Delete(val)
+			resolver.snapshot.Nodes.Delete(val.UID)
 		}
 	}
 }
@@ -368,7 +368,7 @@ func (resolver *K8sIPResolver) handleReplicaSetWatchEvent(replicasetsEvent *watc
 		}
 	case watch.Deleted:
 		if val, ok := replicasetsEvent.Object.(*appsv1.ReplicaSet); ok {
-			resolver.snapshot.ReplicaSets.Delete(val)
+			resolver.snapshot.ReplicaSets.Delete(val.UID)
 		}
 	}
 }
@@ -381,7 +381,7 @@ func (resolver *K8sIPResolver) handleDaemonSetWatchEvent(daemonsetsEvent *watch.
 		}
 	case watch.Deleted:
 		if val, ok := daemonsetsEvent.Object.(*appsv1.DaemonSet); ok {
-			resolver.snapshot.DaemonSets.Delete(val)
+			resolver.snapshot.DaemonSets.Delete(val.UID)
 		}
 	}
 }
@@ -394,7 +394,7 @@ func (resolver *K8sIPResolver) handleStatefulSetWatchEvent(statefulsetsEvent *wa
 		}
 	case watch.Deleted:
 		if val, ok := statefulsetsEvent.Object.(*appsv1.StatefulSet); ok {
-			resolver.snapshot.StatefulSets.Delete(val)
+			resolver.snapshot.StatefulSets.Delete(val.UID)
 		}
 	}
 }
@@ -407,7 +407,7 @@ func (resolver *K8sIPResolver) handleJobsWatchEvent(jobsEvent *watch.Event) {
 		}
 	case watch.Deleted:
 		if val, ok := jobsEvent.Object.(*batchv1.Job); ok {
-			resolver.snapshot.Jobs.Delete(val)
+			resolver.snapshot.Jobs.Delete(val.UID)
 		}
 	}
 }
@@ -439,7 +439,7 @@ func (resolver *K8sIPResolver) handleServicesWatchEvent(servicesEvent *watch.Eve
 		}
 	case watch.Deleted:
 		if val, ok := servicesEvent.Object.(*v1.Service); ok {
-			resolver.snapshot.Services.Delete(val)
+			resolver.snapshot.Services.Delete(val.UID)
 		}
 	}
 }
@@ -452,7 +452,7 @@ func (resolver *K8sIPResolver) handleDeploymentsWatchEvent(deploymentsEvent *wat
 		}
 	case watch.Deleted:
 		if val, ok := deploymentsEvent.Object.(*appsv1.Deployment); ok {
-			resolver.snapshot.Deployments.Delete(val)
+			resolver.snapshot.Deployments.Delete(val.UID)
 		}
 	}
 }
@@ -465,7 +465,7 @@ func (resolver *K8sIPResolver) handleCronJobsWatchEvent(cronjobsEvent *watch.Eve
 		}
 	case watch.Deleted:
 		if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
-			resolver.snapshot.CronJobs.Delete(val)
+			resolver.snapshot.CronJobs.Delete(val.UID)
 		}
 	}
 }
