@@ -69,7 +69,7 @@ helm delete caretta --namespace caretta
 ```
 Note that if persistent storage was enabled in the installation, it may not be deleted automatically by this command.
 
-## Wotking with Cartta :turtle:
+## Working with Cartta :turtle:
 Caretta's helm chart ships an instance of Grafana with pre-defined dashboard using data published by Caretta. This dashboard contains some examples to demonstrate the usage of Caretta's metrics.
 
 ### Using the provided Grafana instance
@@ -129,4 +129,4 @@ Feel free to reach us at our <a href="http://www.groundcover.com/join-slack">sla
 Feel free to add your contribution to the project.
 
 * Open an issue for missing features, or bugs
-* Create a pull request for adding code the project
+* Create a pull request for adding code to the project
