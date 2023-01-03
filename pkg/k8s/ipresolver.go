@@ -98,9 +98,9 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 		} else {
 			hosts, err := net.LookupAddr(ip)
 			if err == nil && len(hosts) > 0 {
-				resolver.dnsResolvedIps.Add(ip, hosts[0])
 				host = hosts[0]
 			}
+			resolver.dnsResolvedIps.Add(ip, host)
 		}
 	}
 	return Workload{
@@ -240,7 +240,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				watchEventsCounter.WithLabelValues("cronjob").Inc()
 				if !ok {
 					cronJobsWatcher, err = resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
-					watchResetsCounter.WithLabelValues("cronjob").Inc()
+					watchResetsCounter.WithLabelValues("pod").Inc()
 					continue
 				}
 				resolver.handleCronJobsWatchEvent(&cronjobsEvent)
