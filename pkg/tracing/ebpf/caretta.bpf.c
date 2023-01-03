@@ -220,10 +220,36 @@ int handle_set_tcp_syn_recv(struct sock* sock) {
 
 int handle_set_tcp_close(struct sock* sock) {
   // mark as inactive
+  struct connection_identifier conn_id = {};
+  struct connection_throughput_stats throughput = {};
+  struct sock_info new_info = {};
+
+  if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
+    return BPF_ERROR;
+  }
+
   struct sock_info *info = bpf_map_lookup_elem(&sock_infos, &sock);
-  if (info != NULL) {
+  if (info == NULL) {
+    enum connection_role role = get_sock_role(sock);
+
+    new_info = (struct sock_info){
+        .pid = 0, // can't associate to pid anyway
+        .role = role,
+        .is_active = false,
+        .id = get_unique_id(),
+    };
+
+    bpf_map_update_elem(&sock_infos, &sock, &new_info, BPF_ANY); 
+    info = &new_info;
+  } else {
     info->is_active = false;
   }
+
+  conn_id.pid = info->pid;
+  conn_id.id = info->id;
+  conn_id.role = info->role;
+  throughput.is_active = false;
+  bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
   return BPF_SUCCESS;
 }
