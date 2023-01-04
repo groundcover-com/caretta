@@ -15,7 +15,13 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-resources: {}
+resources:
+  limits:
+    cpu: 100m
+    memory: 250Mi
+  requests:
+    cpu: 10m
+    memory: 50Mi
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -55,6 +61,13 @@ priorityClassName:
 
 victoria-metrics-single:
   server:
+    resources: 
+      limits:
+        cpu: 30m
+        memory: 350Mi
+      requests:
+        cpu: 5m
+        memory: 50Mi
     fullnameOverride: caretta-vm
     persistentVolume:
        enabled: false
@@ -91,6 +104,13 @@ victoria-metrics-single:
                 target_label: caretta_node
 
 grafana:
+  resources:
+    limits:
+      memory: 150Mi
+      cpu: 15m
+    requests:
+      memory: 50Mi
+      cpu: 5m
   datasources:  
     datasources.yaml:
       apiVersion: 1
