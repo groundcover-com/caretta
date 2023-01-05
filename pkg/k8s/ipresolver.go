@@ -34,15 +34,16 @@ var (
 )
 
 type clusterSnapshot struct {
-	Pods         sync.Map // map[types.UID]v1.Pod
-	Nodes        sync.Map // map[types.UID]v1.Node
-	ReplicaSets  sync.Map // map[types.UID]appsv1.ReplicaSet
-	DaemonSets   sync.Map // map[types.UID]appsv1.DaemonSet
-	StatefulSets sync.Map // map[types.UID]appsv1.StatefulSet
-	Jobs         sync.Map // map[types.UID]batchv1.Job
-	Services     sync.Map // map[types.UID]v1.Service
-	Deployments  sync.Map // map[types.UID]appsv1.Deployment
-	CronJobs     sync.Map // map[types.UID]batchv1.CronJob
+	Pods           sync.Map // map[types.UID]v1.Pod
+	Nodes          sync.Map // map[types.UID]v1.Node
+	ReplicaSets    sync.Map // map[types.UID]appsv1.ReplicaSet
+	DaemonSets     sync.Map // map[types.UID]appsv1.DaemonSet
+	StatefulSets   sync.Map // map[types.UID]appsv1.StatefulSet
+	Jobs           sync.Map // map[types.UID]batchv1.Job
+	Services       sync.Map // map[types.UID]v1.Service
+	Deployments    sync.Map // map[types.UID]appsv1.Deployment
+	CronJobs       sync.Map // map[types.UID]batchv1.CronJob
+	PodDescriptors sync.Map // map[types.UID]string
 }
 
 type K8sIPResolver struct {
@@ -700,12 +701,19 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 }
 
 func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
+	existing, ok := resolver.snapshot.PodDescriptors.Load(pod.UID)
+	if ok {
+		result, ok := existing.(Workload)
+		if ok {
+			return result
+		}
+	}
+	var err error
 	name := pod.Name
 	namespace := pod.Namespace
 	kind := "pod"
 	owner := metav1.GetControllerOf(pod)
 	for owner != nil {
-		var err error
 		name = owner.Name
 		kind = owner.Kind
 		owner, err = resolver.getControllerOfOwner(&resolver.snapshot, owner)
@@ -713,9 +721,13 @@ func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
 			log.Printf("Error retreiving owner of %v - %v", name, err)
 		}
 	}
-	return Workload{
+	result := Workload{
 		Name:      name,
 		Namespace: namespace,
 		Kind:      kind,
 	}
+	if err == nil {
+		resolver.snapshot.PodDescriptors.Store(pod.UID, result)
+	}
+	return result
 }
