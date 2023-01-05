@@ -335,6 +335,7 @@ func (resolver *K8sIPResolver) handlePodWatchEvent(podEvent *watch.Event) {
 	case watch.Deleted:
 		if val, ok := podEvent.Object.(*v1.Pod); ok {
 			resolver.snapshot.Pods.Delete(val.UID)
+			resolver.snapshot.PodDescriptors.Delete(val.UID)
 		}
 	}
 }
