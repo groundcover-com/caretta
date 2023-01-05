@@ -17,8 +17,8 @@ fullnameOverride: ""
 
 resources:
   limits:
-    cpu: 100m
-    memory: 250Mi
+    cpu: 150m
+    memory: 300Mi
   requests:
     cpu: 10m
     memory: 50Mi
@@ -63,7 +63,7 @@ victoria-metrics-single:
   server:
     resources: 
       limits:
-        cpu: 30m
+        cpu: 300m
         memory: 350Mi
       requests:
         cpu: 5m
@@ -106,8 +106,8 @@ victoria-metrics-single:
 grafana:
   resources:
     limits:
-      memory: 150Mi
-      cpu: 15m
+      memory: 300Mi
+      cpu: 300m
     requests:
       memory: 50Mi
       cpu: 5m
