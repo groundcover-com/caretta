@@ -26,7 +26,7 @@ Carreta leverages eBPF to efficiently map all service network interactions in a 
 
 Carreta is built to be efficient, with a minimal footprint on the system, and does not require any modifications or installation on the cluster.
 
-Caretta demonstrates the power of using eBPF for observability solutions, which is our vision at <a href="https://groundcover.com">groundcover</a>. If you're interested in understanding how Caretta is built, head over to our <a href="">Caretta blog post!</a>
+Caretta demonstrates the power of using eBPF for observability solutions, which is our vision at <a href="https://groundcover.com">groundcover</a>. If you're interested in understanding how Caretta is built, head over to our <a href="https://www.groundcover.com/blog/caretta">Caretta blog post!</a>
 
 ## Installing Caretta :zap:
 As simple as installing a helm chart. It is recommended to install Caretta in a new, unique namespace.
