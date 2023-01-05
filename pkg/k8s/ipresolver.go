@@ -43,7 +43,7 @@ type clusterSnapshot struct {
 	Services       sync.Map // map[types.UID]v1.Service
 	Deployments    sync.Map // map[types.UID]appsv1.Deployment
 	CronJobs       sync.Map // map[types.UID]batchv1.CronJob
-	PodDescriptors sync.Map // map[types.UID]string
+	PodDescriptors sync.Map // map[types.UID]Workload
 }
 
 type K8sIPResolver struct {
@@ -635,10 +635,10 @@ func (resolver *K8sIPResolver) storeWorkloadsIP(ip string, newWorkload *Workload
 
 // an ugly function to go up one level in hierarchy. maybe there's a better way to do it
 // the snapshot is maintained to avoid using an API request for each resolving
-func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
+func (resolver *K8sIPResolver) getControllerOfOwner(originalOwner *metav1.OwnerReference) (*metav1.OwnerReference, error) {
 	switch originalOwner.Kind {
 	case "ReplicaSet":
-		replicaSetVal, ok := snapshot.ReplicaSets.Load(originalOwner.UID)
+		replicaSetVal, ok := resolver.snapshot.ReplicaSets.Load(originalOwner.UID)
 		if !ok {
 			return nil, errors.New("Missing replicaset for UID " + string(originalOwner.UID))
 		}
@@ -648,7 +648,7 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 		}
 		return metav1.GetControllerOf(&replicaSet), nil
 	case "DaemonSet":
-		daemonSetVal, ok := snapshot.DaemonSets.Load(originalOwner.UID)
+		daemonSetVal, ok := resolver.snapshot.DaemonSets.Load(originalOwner.UID)
 		if !ok {
 			return nil, errors.New("Missing daemonset for UID " + string(originalOwner.UID))
 		}
@@ -658,7 +658,7 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 		}
 		return metav1.GetControllerOf(&daemonSet), nil
 	case "StatefulSet":
-		statefulSetVal, ok := snapshot.StatefulSets.Load(originalOwner.UID)
+		statefulSetVal, ok := resolver.snapshot.StatefulSets.Load(originalOwner.UID)
 		if !ok {
 			return nil, errors.New("Missing statefulset for UID " + string(originalOwner.UID))
 		}
@@ -668,7 +668,7 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 		}
 		return metav1.GetControllerOf(&statefulSet), nil
 	case "Job":
-		jobVal, ok := snapshot.Jobs.Load(originalOwner.UID)
+		jobVal, ok := resolver.snapshot.Jobs.Load(originalOwner.UID)
 		if !ok {
 			return nil, errors.New("Missing job for UID " + string(originalOwner.UID))
 		}
@@ -678,7 +678,7 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 		}
 		return metav1.GetControllerOf(&job), nil
 	case "Deployment":
-		deploymentVal, ok := snapshot.Deployments.Load(originalOwner.UID)
+		deploymentVal, ok := resolver.snapshot.Deployments.Load(originalOwner.UID)
 		if !ok {
 			return nil, errors.New("Missing deployment for UID " + string(originalOwner.UID))
 		}
@@ -688,7 +688,7 @@ func (resolver *K8sIPResolver) getControllerOfOwner(snapshot *clusterSnapshot, o
 		}
 		return metav1.GetControllerOf(&deployment), nil
 	case "CronJob":
-		cronJobVal, ok := snapshot.CronJobs.Load(originalOwner.UID)
+		cronJobVal, ok := resolver.snapshot.CronJobs.Load(originalOwner.UID)
 		if !ok {
 			return nil, errors.New("Missing cronjob for UID " + string(originalOwner.UID))
 		}
@@ -714,10 +714,12 @@ func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
 	namespace := pod.Namespace
 	kind := "pod"
 	owner := metav1.GetControllerOf(pod)
+	// climbing up the owners' hierarchy. if an error occurs, we take the data we got and save
+	// the error to know we shouldn't save this resolvment to the descriptors map and retry later.
 	for owner != nil {
 		name = owner.Name
 		kind = owner.Kind
-		owner, err = resolver.getControllerOfOwner(&resolver.snapshot, owner)
+		owner, err = resolver.getControllerOfOwner(owner)
 		if err != nil {
 			log.Printf("Error retreiving owner of %v - %v", name, err)
 		}
