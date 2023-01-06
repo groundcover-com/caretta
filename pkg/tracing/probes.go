@@ -18,7 +18,7 @@ type Probes struct {
 
 func LoadProbes() (Probes, *ebpf.Map, error) {
 	if err := rlimit.RemoveMemlock(); err != nil {
-		return Probes{}, nil, fmt.Errorf("errot removing memory lock - %v", err)
+		return Probes{}, nil, fmt.Errorf("error removing memory lock - %v", err)
 	}
 
 	objs := bpfObjects{}
