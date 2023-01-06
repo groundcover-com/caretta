@@ -114,6 +114,12 @@ func (resolver *K8sIPResolver) ResolveIP(ip string) Workload {
 }
 
 func (resolver *K8sIPResolver) StartWatching() error {
+	// get initial state
+	err := resolver.getResolvedClusterSnapshot()
+	if err != nil {
+		resolver.StopWatching()
+		return fmt.Errorf("error retrieving cluster's initial state 1st time: %v", err)
+	}
 	// register watchers
 	podsWatcher, err := resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -300,7 +306,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 	err = resolver.getResolvedClusterSnapshot()
 	if err != nil {
 		resolver.StopWatching()
-		return fmt.Errorf("error retrieving cluster's initial state: %v", err)
+		return fmt.Errorf("error retrieving cluster's initial state 2nd time: %v", err)
 	}
 
 	return nil
