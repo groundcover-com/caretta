@@ -7,6 +7,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/rlimit"
 )
 
 type Probes struct {
@@ -16,6 +17,10 @@ type Probes struct {
 }
 
 func LoadProbes() (Probes, *ebpf.Map, error) {
+	if err := rlimit.RemoveMemlock(); err != nil {
+		return Probes{}, nil, fmt.Errorf("error removing memory lock - %v", err)
+	}
+
 	objs := bpfObjects{}
 	err := loadBpfObjects(&objs, &ebpf.CollectionOptions{})
 	if err != nil {
