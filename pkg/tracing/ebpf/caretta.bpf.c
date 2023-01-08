@@ -112,7 +112,7 @@ static inline enum connection_role get_sock_role(struct sock* sock) {
 // probing the tcp_data_queue kernel function, and adding the connection
 // observed to the map.
 SEC("kprobe/tcp_data_queue")
-int handle_tcp_data_queue(struct pt_regs *ctx) {
+static int handle_tcp_data_queue(struct pt_regs *ctx) {
   // first argument to tcp_data_queue is a struct sock*
   struct sock *sock = (struct sock *)PT_REGS_PARM1_CORE(ctx);
 
@@ -170,7 +170,7 @@ int handle_tcp_data_queue(struct pt_regs *ctx) {
   return BPF_SUCCESS;
 };
 
-int handle_set_tcp_syn_sent(struct sock* sock) {
+static int handle_set_tcp_syn_sent(struct sock* sock) {
   // start of a client session
   u32 pid = bpf_get_current_pid_tgid() >> 32;
 
@@ -186,7 +186,7 @@ int handle_set_tcp_syn_sent(struct sock* sock) {
   return BPF_SUCCESS;
 }
 
-int handle_set_tcp_syn_recv(struct sock* sock) {
+static int handle_set_tcp_syn_recv(struct sock* sock) {
   // this is a server getting syn after listen
     struct connection_identifier conn_id = {};
     struct connection_throughput_stats throughput = {};
@@ -218,7 +218,7 @@ int handle_set_tcp_syn_recv(struct sock* sock) {
     return BPF_SUCCESS;
 }
 
-int handle_set_tcp_close(struct sock* sock) {
+static int handle_set_tcp_close(struct sock* sock) {
   // mark as inactive
   struct connection_identifier conn_id = {};
   struct connection_throughput_stats throughput = {};
@@ -246,7 +246,7 @@ int handle_set_tcp_close(struct sock* sock) {
 }
 
 SEC("tracepoint/sock/inet_sock_set_state")
-int handle_sock_set_state(struct set_state_args *args) {
+static int handle_sock_set_state(struct set_state_args *args) {
   struct sock *sock = (struct sock *)args->skaddr;
 
   switch(args->newstate) {
