@@ -90,8 +90,8 @@ Using *kubectl*, it should look something like this:
 kubectl port-forward --namespace caretta <grafana-pod-name> 3000:3000
 ```
 
-> **_NOTE:_**  Anonymous mode is enabled making the default dashboard is accessible with no login needed. 
->              To edit the dashboard or create your own use the Default administrator's credentials user:`admin` ; passwords:`caretta`.
+> **_NOTE:_**  Anonymous mode is enabled, making the default dashboard accessible with no login needed. 
+>              To edit the dashboard or create your own, use the default administrator's credentials user:`admin` ; password:`caretta`.
 
 ### Scraping Caretta's metrics
 
