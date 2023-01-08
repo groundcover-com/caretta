@@ -74,9 +74,11 @@ helm delete caretta --namespace caretta
 Note that if persistent storage was enabled in the installation, it may not be deleted automatically by this command.
 
 ## Requirements
-Linux kernel version on all K8s nodes running Caretta must be newer than 4.16. Currently Caretta supports only x64 systems.
+* Linux kernel version >= 4.16
+* x64 system
+* <a href="https://nakryiko.com/posts/bpf-portability-and-co-re/">CO-RE</a> support. supported linux distributions can be found <a href="https://github.com/libbpf/libbpf#bpf-co-re-compile-once--run-everywhere">here</a>. Specifically, Docker for Mac uses a distribution which is not supported.
 
-Additionally, Caretta uses <a href="https://nakryiko.com/posts/bpf-portability-and-co-re/">CO-RE</a> and relies on <a href="https://www.kernel.org/doc/html/latest/bpf/btf.html">BTF</a> support. See <a href="https://github.com/libbpf/libbpf#bpf-co-re-compile-once--run-everywhere">libbpf's CO-RE section</a> for more information on Linux distributions' support for CO-RE.
+
 
 ## Working with Caretta :turtle:
 Caretta's helm chart ships an instance of Grafana with a predefined dashboard using data published by Caretta. This dashboard contains some examples to demonstrate the usage of Caretta's metrics.
