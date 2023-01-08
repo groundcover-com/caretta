@@ -170,7 +170,7 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
   return BPF_SUCCESS;
 };
 
-static int handle_set_tcp_syn_sent(struct sock* sock) {
+static inline int handle_set_tcp_syn_sent(struct sock* sock) {
   // start of a client session
   u32 pid = bpf_get_current_pid_tgid() >> 32;
 
@@ -186,7 +186,7 @@ static int handle_set_tcp_syn_sent(struct sock* sock) {
   return BPF_SUCCESS;
 }
 
-static int handle_set_tcp_syn_recv(struct sock* sock) {
+static inline int handle_set_tcp_syn_recv(struct sock* sock) {
   // this is a server getting syn after listen
     struct connection_identifier conn_id = {};
     struct connection_throughput_stats throughput = {};
@@ -218,7 +218,7 @@ static int handle_set_tcp_syn_recv(struct sock* sock) {
     return BPF_SUCCESS;
 }
 
-static int handle_set_tcp_close(struct sock* sock) {
+static inline int handle_set_tcp_close(struct sock* sock) {
   // mark as inactive
   struct connection_identifier conn_id = {};
   struct connection_throughput_stats throughput = {};
