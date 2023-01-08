@@ -43,7 +43,7 @@ helm install caretta --namespace caretta --create-namespace groundcover/caretta
 ### Configuration
 You can configure Caretta using helm values.
 Useful values:
-* **tolreations** can be specified to make sure Caretta's eBPF-agent will run on all cluster in your nodes. *default value will tolerate common control-plane node annotations*
+* **tolerations** can be specified to make sure Caretta's eBPF-agent will run on all cluster in your nodes. *default value will tolerate common control-plane node annotations*
 * **victoria-metrics-single.server.persistentVolume.enabled** can be set to *true* if you wish to save Caretta's metrics to a persistent volume *default: false*
 * **pollIntervalSeconds** can be modified to specify the polling and publishing interval of new metrics from the kernel. *default: 5*
 
@@ -70,8 +70,8 @@ helm delete caretta --namespace caretta
 ```
 Note that if persistent storage was enabled in the installation, it may not be deleted automatically by this command.
 
-## Working with Cartta :turtle:
-Caretta's helm chart ships an instance of Grafana with pre-defined dashboard using data published by Caretta. This dashboard contains some examples to demonstrate the usage of Caretta's metrics.
+## Working with Caretta :turtle:
+Caretta's helm chart ships an instance of Grafana with a predefined dashboard using data published by Caretta. This dashboard contains some examples to demonstrate the usage of Caretta's metrics.
 
 ### Using the provided Grafana instance
 To access Grafana, port-forward port `3000` from the Grafana pod in Caretta's namespace. 
@@ -124,7 +124,7 @@ sort_desc(increase((sum by (client_name)(caretta_links_observed{server_namespace
 will output communication to external servers by client's name, sorted descending.
 
 ## Need help:grey_question:
-Feel free to reach us at our <a href="http://www.groundcover.com/join-slack">slack channel</a>, or create an issue in this repository.
+Feel free to reach us on our <a href="http://www.groundcover.com/join-slack">slack channel</a>, or create an issue in this repository.
 
 ## Contribution
 Feel free to add your contribution to the project.
