@@ -2,7 +2,9 @@
   <h1>Caretta</h1>
   <p align="center">
     <img src="images/logo.svg" width="25%" alt="caretta" title="caretta" />
-   </p>
+   <br><br>
+   <a href="https://www.producthunt.com/posts/caretta?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-caretta" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=373791&theme=neutral" alt="Caretta - Instant&#0032;K8s&#0032;service&#0032;dependency&#0032;map&#0044;&#0032;right&#0032;to&#0032;your&#0032;Grafana&#0046; | Product Hunt" width="25%"/></a>
+  </p>
     <h2>Instant K8s service dependency map , right to your Grafana.</h2>
     <h4> made by <a href="https://www.groundcover.com">groundcover</h4>
   <p>
@@ -10,6 +12,7 @@
 
   [![slack](https://img.shields.io/badge/slack-groundcover-yellowgreen.svg?logo=slack)](http://www.groundcover.com/join-slack)
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+  <br>
 </div>
 
 
