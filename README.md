@@ -27,7 +27,7 @@ Caretta is a lightweight, standalone tool that instantly creates a visual networ
 
 Carreta leverages eBPF to efficiently map all service network interactions in a K8s  cluster, and Grafana to query and visualize the collected data.
 
-Carreta is built to be efficient, with a minimal footprint on the system, and does not require any modifications or installation on the cluster.
+Carreta is built to be efficient, with a minimal footprint on the system, and does not require any modifications of the cluster.
 
 Caretta demonstrates the power of using eBPF for observability solutions, which is our vision at <a href="https://groundcover.com">groundcover</a>. If you're interested in understanding how Caretta is built, head over to our <a href="https://www.groundcover.com/blog/caretta">Caretta blog post!</a>
 
