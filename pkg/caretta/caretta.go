@@ -51,7 +51,8 @@ func (caretta *Caretta) Start() {
 	if err != nil {
 		log.Fatalf("Error creating resolver: %v", err)
 	}
-	if resolver.StartWatching() != nil {
+	err = resolver.StartWatching()
+	if err != nil {
 		log.Fatalf("Error watching cluster's state: %v", err)
 	}
 

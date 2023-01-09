@@ -117,47 +117,47 @@ func (resolver *K8sIPResolver) StartWatching() error {
 	// register watchers
 	podsWatcher, err := resolver.clientset.CoreV1().Pods("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching pods changes")
+		return fmt.Errorf("error watching pods changes - %v", err)
 	}
 
 	nodesWatcher, err := resolver.clientset.CoreV1().Nodes().Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching nodes changes")
+		return fmt.Errorf("error watching nodes changes - %v", err)
 	}
 
 	replicasetsWatcher, err := resolver.clientset.AppsV1().ReplicaSets("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching replicasets changes")
+		return fmt.Errorf("error watching replicasets changes - %v", err)
 	}
 
 	daemonsetsWatcher, err := resolver.clientset.AppsV1().DaemonSets("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching daemonsets changes")
+		return fmt.Errorf("error watching daemonsets changes - %v", err)
 	}
 
 	statefulsetsWatcher, err := resolver.clientset.AppsV1().StatefulSets("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching statefulsets changes")
+		return fmt.Errorf("error watching statefulsets changes - %v", err)
 	}
 
 	jobsWatcher, err := resolver.clientset.BatchV1().Jobs("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching jobs changes")
+		return fmt.Errorf("error watching jobs changes - %v", err)
 	}
 
 	servicesWatcher, err := resolver.clientset.CoreV1().Services("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching services changes")
+		return fmt.Errorf("error watching services changes - %v", err)
 	}
 
 	deploymentsWatcher, err := resolver.clientset.AppsV1().Deployments("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watcher deployments changes")
+		return fmt.Errorf("error watching deployments changes - %v", err)
 	}
 
 	cronJobsWatcher, err := resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error watching cronjobs changes")
+		return fmt.Errorf("error watching cronjobs changes - %v", err)
 	}
 
 	// invoke a watching function
