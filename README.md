@@ -49,6 +49,8 @@ Useful values:
 * **tolerations** can be specified to make sure Caretta's eBPF-agent will run on all cluster in your nodes. *default value will tolerate common control-plane node annotations*
 * **victoria-metrics-single.server.persistentVolume.enabled** can be set to *true* if you wish to save Caretta's metrics to a persistent volume *default: false*
 * **pollIntervalSeconds** can be modified to specify the polling and publishing interval of new metrics from the kernel. *default: 5*
+* The built-in Victoria Metrics and Grafana instances can be disabled by changing the values **victoria-metrics-single.enabled** or **grafana.enabled** to false, accordingly. _default: true_
+
 
 Example yaml for overriding these values:
 ```yaml
