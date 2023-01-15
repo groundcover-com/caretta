@@ -123,7 +123,7 @@ caretta_links_observed{client_id="1074587981",client_kind="Deployment",client_na
 ```bash 
 increase ((sum (server_port) (caretta_links_observed{client_name="some-client", server_name="some-server}))[15m]) 
 ```
-` will output the throughput observed between some-client and some-server in the last 15 minutes, aggregated by port.
+will output the throughput observed between some-client and some-server in the last 15 minutes, aggregated by port.
 
 ```bash 
 sum by (server_name) (rate(caretta_links_observed{client_name="some-client"}))
