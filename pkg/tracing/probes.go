@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 )
@@ -14,6 +16,17 @@ type Probes struct {
 	Kprobe     link.Link
 	Tracepoint link.Link
 	BpfObjs    bpfObjects
+}
+
+func IsSupported() bool {
+	_, err := btf.LoadKernelSpec()
+	if err == btf.ErrNotSupported {
+		return false
+	}
+	if _, err := os.Stat("/sys/kernel/tracing/events/sock/inet_sock_set_state"); errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	return true
 }
 
 func LoadProbes() (Probes, *ebpf.Map, error) {
