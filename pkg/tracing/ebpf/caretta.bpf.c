@@ -121,7 +121,7 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
 
   if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
     debug_print("error parsing sock");
-    return BPF_ERROR;
+  return BPF_ERROR;
   }
 
   // skip unconnected sockets
