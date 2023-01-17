@@ -16,7 +16,7 @@ VERSION=1
 
 .PHONY: build
 build: ${BIN_DIR} pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
+	CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 ${BIN_DIR}:
 	mkdir -p ${BIN_DIR}
@@ -32,7 +32,7 @@ generate_ebpf: ${BPF2GO_BINARY}_${BPF2GO_VERSION} \
 	(cd ${REPODIR}/pkg/tracing && \
 		GOPACKAGE=tracing ${REPODIR}/${BPF2GO_BINARY}_${BPF2GO_VERSION} \
 		-cc "${BPF_CLANG}" -cflags "${BPF_CFLAGS}"  \
-		-target arm64 bpf \
+		-target native bpf \
 		ebpf/caretta.bpf.c --)
 
 ${BPF2GO_BINARY}_${BPF2GO_VERSION}:
