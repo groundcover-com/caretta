@@ -121,7 +121,7 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
 
   if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
     debug_print("error parsing sock");
-  return BPF_ERROR;
+    return BPF_ERROR;
   }
 
   // skip unconnected sockets
@@ -252,15 +252,12 @@ static int handle_sock_set_state(struct set_state_args *args) {
   switch(args->newstate) {
     case TCP_SYN_RECV: {
       return handle_set_tcp_syn_recv(sock) == BPF_ERROR;
-      break;
     }
     case TCP_SYN_SENT: {
       return handle_set_tcp_syn_sent(sock) == BPF_ERROR;
-      break;
     }
     case TCP_CLOSE:  {
       return handle_set_tcp_close(sock);
-      break;
     }
   }
 
