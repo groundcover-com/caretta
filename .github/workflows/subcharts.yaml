@@ -1,0 +1,44 @@
+name: subcharts-images
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'chart/charts/**'
+
+defaults:
+ run:
+  working-directory: chart/charts
+
+jobs:
+  subchart-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Login to Quay.io
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      -
+        name: Push Grafana Image
+        run: |
+          IMAGE_TAG=$(helm show chart grafana* | yq e '.appVersion' -)
+          docker pull grafana/grafana:${IMAGE_TAG}
+          docker tag grafana/grafana:${IMAGE_TAG} quay.io/groundcover/grafana:${IMAGE_TAG}
+          docker push quay.io/groundcover/grafana:${IMAGE_TAG}
+      -
+        name: Push Victoria-Metrics Image
+        run: |
+          IMAGE_TAG=v$(helm show chart victoria-metrics* | yq e '.appVersion' -)
+          docker pull victoriametrics/victoria-metrics:${IMAGE_TAG}
+          docker tag victoriametrics/victoria-metrics:${IMAGE_TAG} quay.io/groundcover/victoria-metrics:${IMAGE_TAG}
+          docker push quay.io/groundcover/victoria-metrics:${IMAGE_TAG}

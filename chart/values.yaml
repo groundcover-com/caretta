@@ -61,6 +61,8 @@ priorityClassName:
 
 victoria-metrics-single:
   server:
+    image:
+      repository: quay.io/groundcover/victoria-metrics
     resources: 
       limits:
         cpu: 300m
@@ -104,6 +106,8 @@ victoria-metrics-single:
                 target_label: caretta_node
 
 grafana:
+  image:
+    repository: quay.io/groundcover/grafana
   resources:
     limits:
       memory: 300Mi
