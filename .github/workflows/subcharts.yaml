@@ -28,7 +28,7 @@ jobs:
       -
         id: grafana_version
         name: Get Grafana Chart App Version
-        uses: mikefarah/yq@v4
+        uses: mikefarah/yq@master
         with:
           cmd: helm show chart chart/charts/grafana* | yq e '.appVersion' -
       -
@@ -42,7 +42,7 @@ jobs:
       -
         id: victoria_metrics_version
         name: Get Victoria-Metrics Chart App Version
-        uses: mikefarah/yq@v4
+        uses: mikefarah/yq@master
         with:
           cmd: helm show chart chart/charts/victoria-metrics* | yq e '.appVersion' -
       -
