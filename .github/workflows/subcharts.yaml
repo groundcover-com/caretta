@@ -3,11 +3,9 @@ name: subcharts-images
 on:
   push:
     branches:
-      - 'stebveksler/sc-6929/move-subcharts-images-to-quay-io-groundcover'
-    #   - 'main'
-    # paths:
-    #   - 'chart/charts/**'
-
+      - 'main'
+    paths:
+      - 'chart/charts/**'
 
 defaults:
  run:
@@ -38,7 +36,7 @@ jobs:
           docker tag grafana/grafana:${IMAGE_TAG} quay.io/groundcover/grafana:${IMAGE_TAG}
           docker push quay.io/groundcover/grafana:${IMAGE_TAG}
       -
-        name: Push victoria-Metrics Image
+        name: Push Victoria-Metrics Image
         run: |
           IMAGE_TAG=v$(helm show chart victoria-metrics* | yq e '.appVersion' -)
           docker pull victoriametrics/victoria-metrics:${IMAGE_TAG}
