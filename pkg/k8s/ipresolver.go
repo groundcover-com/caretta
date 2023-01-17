@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	"k8s.io/api/batch/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,7 +43,7 @@ type clusterSnapshot struct {
 	Jobs           sync.Map // map[types.UID]batchv1.Job
 	Services       sync.Map // map[types.UID]v1.Service
 	Deployments    sync.Map // map[types.UID]appsv1.Deployment
-	CronJobs       sync.Map // map[types.UID]batchv1.CronJob
+	CronJobs       sync.Map // map[types.UID]batchv1.CronJob or batchv1beta.CronJob
 	PodDescriptors sync.Map // map[types.UID]Workload
 }
 
@@ -155,7 +156,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 		return fmt.Errorf("error watching deployments changes - %v", err)
 	}
 
-	cronJobsWatcher, err := resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
+	cronJobsWatcher, err := resolver.startCronjobWatcher()
 	if err != nil {
 		return fmt.Errorf("error watching cronjobs changes - %v", err)
 	}
@@ -283,7 +284,7 @@ func (resolver *K8sIPResolver) StartWatching() error {
 				{
 					if !ok {
 						watchResetsCounter.WithLabelValues("cronjob").Inc()
-						cronJobsWatcher, err = resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
+						cronJobsWatcher, err = resolver.startCronjobWatcher()
 						if err != nil {
 							time.Sleep(reregisterWatchSleepDuration)
 						}
@@ -304,6 +305,15 @@ func (resolver *K8sIPResolver) StartWatching() error {
 	}
 
 	return nil
+}
+
+func (resolver *K8sIPResolver) startCronjobWatcher() (watch.Interface, error) {
+	cronJobsWatcher, err := resolver.clientset.BatchV1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return resolver.clientset.BatchV1beta1().CronJobs("").Watch(context.Background(), metav1.ListOptions{})
+	}
+
+	return cronJobsWatcher, nil
 }
 
 func (resolver *K8sIPResolver) StopWatching() {
@@ -465,8 +475,15 @@ func (resolver *K8sIPResolver) handleCronJobsWatchEvent(cronjobsEvent *watch.Eve
 		if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
 			resolver.snapshot.CronJobs.Store(val.UID, *val)
 		}
+		if val, ok := cronjobsEvent.Object.(*v1beta1.CronJob); ok {
+			resolver.snapshot.CronJobs.Store(val.UID, *val)
+		}
+
 	case watch.Deleted:
 		if val, ok := cronjobsEvent.Object.(*batchv1.CronJob); ok {
+			resolver.snapshot.CronJobs.Delete(val.UID)
+		}
+		if val, ok := cronjobsEvent.Object.(*v1beta1.CronJob); ok {
 			resolver.snapshot.CronJobs.Delete(val.UID)
 		}
 	}
@@ -694,8 +711,13 @@ func (resolver *K8sIPResolver) getControllerOfOwner(originalOwner *metav1.OwnerR
 		}
 		cronJob, ok := cronJobVal.(batchv1.CronJob)
 		if !ok {
-			return nil, errors.New("type confusion in cronjobs map")
+			cronJob, ok := cronJobVal.(v1beta1.CronJob)
+			if !ok {
+				return nil, errors.New("type confusion in cronjobs map")
+			}
+			return metav1.GetControllerOf(&cronJob), nil
 		}
+
 		return metav1.GetControllerOf(&cronJob), nil
 	}
 	return nil, errors.New("Unsupported kind for lookup - " + originalOwner.Kind)
