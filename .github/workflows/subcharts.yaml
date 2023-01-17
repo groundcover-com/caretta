@@ -1,0 +1,55 @@
+name: subcharts-images
+
+on:
+  push:
+    branches:
+      - 'stebveksler/sc-6929/move-subcharts-images-to-quay-io-groundcover'
+    #   - 'main'
+    # paths:
+    #   - 'chart/charts/**'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Login to Quay.io
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      -
+        id: grafana_version
+        name: Get Grafana Chart App Version
+        uses: mikefarah/yq@v4
+        with:
+          cmd: helm show chart chart/charts/grafana* | yq e '.appVersion' -
+      -
+        name: Push Grafana Image
+        env:
+          IMAGE_TAG: ${{ steps.grafana_version.outputs.result }}
+        run: |
+          docker pull grafana/grafana:${IMAGE_TAG}
+          docker tag grafana/grafana:${IMAGE_TAG} quay.io/groundcover/grafana:${IMAGE_TAG}
+          docker push quay.io/groundcover/grafana:${IMAGE_TAG}
+      -
+        id: victoria_metrics_version
+        name: Get Victoria-Metrics Chart App Version
+        uses: mikefarah/yq@v4
+        with:
+          cmd: helm show chart chart/charts/victoria-metrics* | yq e '.appVersion' -
+      -
+        name: Push victoria-Metrics Image
+        env:
+          IMAGE_TAG: v${{ steps.victoria_metrics_version.outputs.result }}
+        run: |
+          docker pull victoriametrics/victoria-metrics:${IMAGE_TAG}
+          docker tag victoriametrics/victoria-metrics:${IMAGE_TAG} quay.io/groundcover/victoria-metrics:${IMAGE_TAG}
+          docker push quay.io/groundcover/victoria-metrics:${IMAGE_TAG}
