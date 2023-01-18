@@ -5,7 +5,7 @@
    <br><br>
    <a href="https://www.producthunt.com/posts/caretta?utm_source=badge-top-post-topic-badge&utm_medium=badge&utm_souce=badge-caretta" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/top-post-topic-badge.svg?post_id=373791&theme=neutral&period=weekly&topic_id=267" alt="Caretta - Instant&#0032;K8s&#0032;service&#0032;dependency&#0032;map&#0044;&#0032;right&#0032;to&#0032;your&#0032;Grafana | Product Hunt" width="25%"/></a>
   </p>
-    <h2>Instant K8s service dependency map , right to your Grafana.</h2>
+    <h2>Instant K8s service dependency map, right to your Grafana.</h2>
     <h4> made by <a href="https://www.groundcover.com">groundcover</h4>
   <p>
 
