@@ -41,7 +41,6 @@ parse_sock_data(struct sock *sock, struct connection_tuple *out_tuple,
                 struct connection_throughput_stats *out_throughput) {
 
   if (sock == NULL) {
-    debug_print("invalid sock received");
     return BPF_ERROR;
   }
 
@@ -58,24 +57,20 @@ parse_sock_data(struct sock *sock, struct connection_tuple *out_tuple,
 
   if (0 != bpf_core_read(&out_tuple->src_ip, sizeof(out_tuple->src_ip),
                       &inet->inet_saddr)) {
-    debug_print("Error reading source ip");
     return BPF_ERROR;
   }
 
   if (0 != bpf_core_read(&out_tuple->dst_ip, sizeof(out_tuple->dst_ip),
                       &inet->inet_daddr)) {
-    debug_print("Error reading dest ip");
     return BPF_ERROR;
   }
 
   if (0 != bpf_core_read(&src_port_be, sizeof(src_port_be), &inet->inet_sport)) {
-    debug_print("Error reading src port");
     return BPF_ERROR;
   }
   out_tuple->src_port = be_to_le(src_port_be);
 
   if (0 != bpf_core_read(&dst_port_be, sizeof(dst_port_be), &inet->inet_dport)) {
-    debug_print("Error reading dst port");
     return BPF_ERROR;
   }
   out_tuple->dst_port = be_to_le(dst_port_be);
@@ -85,12 +80,10 @@ parse_sock_data(struct sock *sock, struct connection_tuple *out_tuple,
   if (0 != bpf_core_read(&out_throughput->bytes_received,
                       sizeof(out_throughput->bytes_received),
                       &tcp->bytes_received)) {
-    debug_print("Error reading bytes_received");
     return BPF_ERROR;
   }
   if (0 != bpf_core_read(&out_throughput->bytes_sent,
                       sizeof(out_throughput->bytes_sent), &tcp->bytes_sent)) {
-    debug_print("Error reading bytes_sent");
     return BPF_ERROR;
   }
 
@@ -120,7 +113,6 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
   struct connection_throughput_stats throughput = {};
 
   if (parse_sock_data(sock, &conn_id.tuple, &throughput) == BPF_ERROR) {
-    debug_print("error parsing sock");
     return BPF_ERROR;
   }
 
@@ -160,7 +152,6 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
   conn_id.id = sock_info->id;
   conn_id.role = sock_info->role;
   if (!sock_info->is_active) {
-    debug_print("inactive sock in tcp_data_queue");
     return -1;
   }
   throughput.is_active = sock_info->is_active; 
