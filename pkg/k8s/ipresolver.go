@@ -566,7 +566,13 @@ func (resolver *K8sIPResolver) getFullClusterSnapshot() error {
 
 	cronJobs, err := resolver.clientset.BatchV1().CronJobs("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return errors.New("error getting cronjobs, aborting snapshot update")
+		cronJobs, err := resolver.clientset.BatchV1beta1().CronJobs("").List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			return errors.New("error getting cronjobs, aborting snapshot update")
+		}
+		for _, cronJob := range cronJobs.Items {
+			resolver.snapshot.CronJobs.Store(cronJob.UID, cronJob)
+		}
 	}
 	for _, cronJob := range cronJobs.Items {
 		resolver.snapshot.CronJobs.Store(cronJob.UID, cronJob)
