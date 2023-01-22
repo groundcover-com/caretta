@@ -54,9 +54,6 @@ spec:
               value: "{{ .Values.prometheusEndpoint }}"
             - name: "POLL_INTERVAL"
               value: "{{ .Values.pollIntervalSeconds }}"
-          securityContext:
-            privileged: true
-            readOnlyRootFilesystem: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
