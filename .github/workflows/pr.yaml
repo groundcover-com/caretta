@@ -22,22 +22,7 @@ jobs:
         with:
           platforms: arm64
       -
-        name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          cache: true
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-      -
-        name: Install Dependencies
-        run: |
-          make generate_ebpf_in_docker
-          go mod download -x
-      -
-        name: Build Binary For amd64
-        run: make build ARCH=amd64
-      -
-        name: Build Docker Image For amd64
+        name: Build Docker Image
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -45,17 +30,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: caretta
-          platforms: linux/amd64
-      - 
-        name: Build Binary For arm64
-        run: make build ARCH=arm64
-      -
-        name: Build Docker Image For arm64
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: caretta
-          platforms: linux/arm64
+          platforms: linux/amd64,linux/arm64
+

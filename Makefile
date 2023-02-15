@@ -18,7 +18,7 @@ ARCH=amd64 # amd64 or arm64
 
 .PHONY: build
 build: ${BIN_DIR} pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
-	GOOS=linux GOARCH=${ARCH} CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
+	GOOS=linux GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 ${BIN_DIR}:
 	mkdir -p ${BIN_DIR}
@@ -53,4 +53,4 @@ generate_ebpf_in_docker: ${BIN_DIR}
 		${MAKE} generate_ebpf
 
 pkg/tracing/bpf_bpfel%.go: pkg/tracing/ebpf/caretta.bpf.c
-	$(MAKE) generate_ebpf_in_docker
+	$(MAKE) generate_ebpf
