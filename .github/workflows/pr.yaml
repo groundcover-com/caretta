@@ -34,10 +34,10 @@ jobs:
           make generate_ebpf_in_docker
           go mod download -x
       -
-        name: Build Binary
-        run: make build
+        name: Build Binary For amd64
+        run: make build ARCH=amd64
       -
-        name: Build Docker Image
+        name: Build Docker Image For amd64
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -45,4 +45,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: caretta
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+      - 
+        name: Build Binary For arm64
+        run: make build ARCH=arm64
+      -
+        name: Build Docker Image For arm64
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: caretta
+          platforms: linux/arm64
