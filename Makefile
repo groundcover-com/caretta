@@ -11,12 +11,14 @@ BUILD_SCRIPTS_DIRECTORY=scripts/build
 BPF_CLANG := clang-14
 INCLUDE_C_FLAGS := -I/tmp/caretta_extra/libbpf_headers -I/tmp/${PROJECT_DIRNAME}/
 BPF_CFLAGS := -O2 -g -Wall -Werror -fdebug-prefix-map=/ebpf=. ${INCLUDE_C_FLAGS}
-IMAGE=caretta-builder
-VERSION=1
+IMAGE=quay.io/cilium/ebpf-builder
+VERSION=1648566014
+
+ARCH=amd64 # amd64 or arm64
 
 .PHONY: build
 build: ${BIN_DIR} pkg/tracing/bpf_bpfel_x86.go cmd/caretta/caretta.go
-	CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
+	GOOS=linux GOARCH=${ARCH} CGO_ENABLED=0 go build -o ${BINARY_PATH} cmd/caretta/caretta.go
 
 ${BIN_DIR}:
 	mkdir -p ${BIN_DIR}
@@ -32,7 +34,7 @@ generate_ebpf: ${BPF2GO_BINARY}_${BPF2GO_VERSION} \
 	(cd ${REPODIR}/pkg/tracing && \
 		GOPACKAGE=tracing ${REPODIR}/${BPF2GO_BINARY}_${BPF2GO_VERSION} \
 		-cc "${BPF_CLANG}" -cflags "${BPF_CFLAGS}"  \
-		-target native bpf \
+		-target arm64,amd64 bpf \
 		ebpf/caretta.bpf.c --)
 
 ${BPF2GO_BINARY}_${BPF2GO_VERSION}:
@@ -41,12 +43,8 @@ ${BPF2GO_BINARY}_${BPF2GO_VERSION}:
 	cd ${CILIUM_EBPF_DIRECTORY} && \
 		go build -o ${REPODIR}/${BPF2GO_BINARY}_${BPF2GO_VERSION} ./cmd/bpf2go
 
-.PHONY: build_builder_docker
-build_builder_docker:
-	docker build --tag ${IMAGE}:${VERSION} -f ebpf-builder-with-bpftool.Dockerfile .
-
 .PHONY: generate_ebpf_in_docker
-generate_ebpf_in_docker: build_builder_docker ${BIN_DIR}
+generate_ebpf_in_docker: ${BIN_DIR}
 	${DOCKER_BIN} run \
 		-v ${REPODIR}:/tmp/caretta \
 		-w /tmp/${PROJECT_DIRNAME} \
