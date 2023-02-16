@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 )
@@ -44,6 +45,9 @@ func LoadProbes() (Probes, *ebpf.Map, error) {
 		return Probes{}, nil, fmt.Errorf("error attaching tracepoint: %v", err)
 	}
 	log.Printf("Tracepoint attached successfully")
+
+	// We are done with loading kprobes - clear the btf cache
+	btf.FlushKernelSpec()
 
 	return Probes{
 		Kprobe:     kp,
