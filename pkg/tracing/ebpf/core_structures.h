@@ -36,12 +36,6 @@ enum {
   TCP_MAX_STATES = 13,
 };
 
-struct user_pt_regs {
-  __u64 regs[31];
-  __u64 sp;
-  __u64 pc;
-  __u64 pstate;
-};
 
 typedef u16 sa_family_t;
 typedef u32 socklen_t;

@@ -8,7 +8,7 @@
 LIBBPF_VERSION=0.6.1
 
 # Version of cilium ebpf repository to fetch vmlinux from
-CILIUM_VMLINUX_VERSION=0.9.0
+CILIUM_VMLINUX_VERSION=0.10.0
 
 HEADERS_DIRECTORY="/tmp/caretta_extra/libbpf_headers"
 
