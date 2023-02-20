@@ -3,7 +3,7 @@ module github.com/groundcover-com/caretta
 go 1.19
 
 require (
-	github.com/cilium/ebpf v0.9.3
+	github.com/cilium/ebpf v0.10.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/prometheus/client_golang v1.14.0
