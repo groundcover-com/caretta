@@ -1,10 +1,9 @@
 FROM quay.io/cilium/ebpf-builder:1648566014 AS builder
-ARG TARGETARCH
-ARG TARGETPLATFORM
-RUN echo "Building for $TARGETARCH"
-RUN echo "Building for $TARGETPLATFORM"
 WORKDIR /build
-COPY . /build/
+COPY go.mod go.sum ./
+RUN go mod vendor
+COPY . .
+ARG TARGETARCH
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg\
     make build ARCH=$TARGETARCH
