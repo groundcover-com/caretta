@@ -1,4 +1,4 @@
-FROM quay.io/cilium/ebpf-builder:1648566014 AS builder
+FROM --platform=$BUILDPLATFORM quay.io/cilium/ebpf-builder:1648566014 AS builder
 ARG TARGETARCH
 ARG TARGETPLATFORM
 RUN echo "Building for $TARGETARCH"
@@ -7,7 +7,7 @@ WORKDIR /build
 COPY . /build/
 RUN make build ARCH=$TARGETARCH
 
-FROM alpine:3.17
+FROM --platform=$TARGETPLATFORM alpine:3.17
 
 WORKDIR /app
 COPY --from=builder build/bin/caretta ./
