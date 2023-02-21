@@ -5,7 +5,9 @@ RUN echo "Building for $TARGETARCH"
 RUN echo "Building for $TARGETPLATFORM"
 WORKDIR /build
 COPY . /build/
-RUN make build ARCH=$TARGETARCH
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg\
+    make build ARCH=$TARGETARCH
 
 FROM alpine:3.17
 
