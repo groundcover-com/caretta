@@ -8,7 +8,7 @@
 LIBBPF_VERSION=0.6.1
 
 # Version of cilium ebpf repository to fetch vmlinux from
-CILIUM_VMLINUX_VERSION=0.9.0
+CILIUM_VMLINUX_VERSION=0.10.0
 
 HEADERS_DIRECTORY="/tmp/caretta_extra/libbpf_headers"
 
@@ -41,6 +41,15 @@ curl -sL --connect-timeout 10 --max-time 10 \
     tar -xz --xform='s#.*/##' -C "$HEADERS_DIRECTORY" "${headers[@]}"
 if [ "$?" -ne 0 ]; then
     echo "Failed to download and extract the needed libbpf headers." 1>&2
+    exit 1
+fi
+
+# Fetch compact vmlinux file from cilium's ebpf repository.
+# This is not a libbpf header per-se, but it's close enough that we put it in the same location.
+curl -s -o "$HEADERS_DIRECTORY"/vmlinux.h \
+    https://raw.githubusercontent.com/cilium/ebpf/v${CILIUM_VMLINUX_VERSION}/examples/headers/common.h
+if [ "$?" -ne 0 ]; then
+    echo "Failed to download vmlinux compact version from cilium's repository."
     exit 1
 fi
 

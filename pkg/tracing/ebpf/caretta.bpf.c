@@ -1,4 +1,5 @@
-#include "vmlinux.h"
+#include "core_structures.h"
+#include "arm_support.h"
 #include <bpf_core_read.h>
 #include <bpf_helpers.h>
 #include <bpf_tracing.h>
@@ -107,7 +108,7 @@ static inline enum connection_role get_sock_role(struct sock* sock) {
 SEC("kprobe/tcp_data_queue")
 static int handle_tcp_data_queue(struct pt_regs *ctx) {
   // first argument to tcp_data_queue is a struct sock*
-  struct sock *sock = (struct sock *)PT_REGS_PARM1_CORE(ctx);
+  struct sock *sock = (struct sock *)PT_REGS_PARM1(ctx);
 
   struct connection_identifier conn_id = {};
   struct connection_throughput_stats throughput = {};
