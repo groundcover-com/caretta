@@ -3,7 +3,7 @@ name: subcharts-images
 on:
   push:
     branches:
-      - 'stebveksler/sc-7425/multi-platform-images-for-subcharts'
+      - 'main'
     paths:
       - 'chart/charts/**'
       - '.github/workflows/subcharts.yaml'
