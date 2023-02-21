@@ -749,7 +749,7 @@ func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
 		kind = owner.Kind
 		owner, err = resolver.getControllerOfOwner(owner)
 		if err != nil {
-			log.Printf("Error retreiving owner of %v - %v", name, err)
+			log.Printf("Warning: couldn't retrieve owner of %v - %v. This might happen when starting up", name, err)
 		}
 	}
 	result := Workload{
