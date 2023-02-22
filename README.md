@@ -75,7 +75,6 @@ Note that if persistent storage was enabled in the installation, it may not be d
 
 ## Requirements
 * Linux kernel version >= 4.16
-* x64 system
 * <a href="https://nakryiko.com/posts/bpf-portability-and-co-re/">CO-RE</a> support. Supported linux distributions can be found <a href="https://github.com/libbpf/libbpf#bpf-co-re-compile-once--run-everywhere">here</a>. Specifically, Docker for Mac uses a distribution which is not currently supported.
 
 
