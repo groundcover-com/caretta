@@ -196,7 +196,7 @@ static inline int handle_set_tcp_syn_recv(struct sock* sock) {
 
     bpf_map_update_elem(&sock_infos, &sock, &info, BPF_ANY);
 
-    // probably the dst ip will still be unitialized
+    // probably the dst ip will still be uninitialized
     if (conn_id.tuple.dst_ip == 0) {
       return BPF_SUCCESS;
     }
