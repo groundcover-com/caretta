@@ -152,7 +152,7 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 	var throughput ConnectionThroughputStats
 	err := tracer.connections.Lookup(conn, &throughput)
 	if err != nil {
-		log.Printf("Error retreiving connection to delete, skipping it: %v", err)
+		log.Printf("Error retrieving connection to delete, skipping it: %v", err)
 		failedConnectionDeletion.Inc()
 		return
 	}
