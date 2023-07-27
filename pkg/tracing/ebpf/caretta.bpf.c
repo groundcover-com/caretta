@@ -5,7 +5,7 @@
 #include <bpf_tracing.h>
 #include "ebpf_utils.h"
 #include "epbf_shared_types.h"
-#include "ebpf_internel_types.h"
+#include "ebpf_internal_types.h"
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
