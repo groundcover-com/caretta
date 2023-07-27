@@ -787,7 +787,7 @@ func TestResolving(t *testing.T) {
 func TestControllersResolving(t *testing.T) {
 	var controllersTests = []testScenario{
 		{
-			description: "initial snapshot 1 pod controlled by delpoyment resolve to deployment",
+			description: "initial snapshot 1 pod controlled by deployment resolve to deployment",
 			initialState: testStep{
 				shouldWait: false,
 				newPods: []podDescriptor{
