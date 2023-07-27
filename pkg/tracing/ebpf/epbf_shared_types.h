@@ -26,7 +26,7 @@ struct connection_tuple {
 
 // all information needed to identify a specific connection.
 // due to socket reuses, each of the members (beside id) may change while
-// maintaing the others.
+// maintaining the others.
 struct connection_identifier {
   u32 id; // uniquely generated id
   u32 pid;
