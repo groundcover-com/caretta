@@ -24,7 +24,7 @@ var (
 	})
 	unRoledConnections = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "caretta_current_unroled_connections",
-		Help: `Number of connection which coldn't be distinguished to
+		Help: `Number of connection which couldn't be distinguished to
 		 role (client/server) in the last iteration`,
 	})
 	filteredLoopbackConnections = promauto.NewGauge(prometheus.GaugeOpts{
