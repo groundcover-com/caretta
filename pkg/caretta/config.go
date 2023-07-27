@@ -20,7 +20,7 @@ type carettaConfig struct {
 	pollingIntervalSeconds int
 }
 
-// environment variables based, encaplsulated to enable future changes
+// environment variables based, encapsulated to enable future changes
 func readConfig() carettaConfig {
 	port := defaultPrometheusPort
 	if val := os.Getenv("PROMETHEUS_PORT"); val != "" {
