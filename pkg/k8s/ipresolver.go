@@ -584,7 +584,7 @@ func (resolver *K8sIPResolver) getFullClusterSnapshot() error {
 // add mapping from ip to resolved host to an existing map,
 // based on the given cluster snapshot
 func (resolver *K8sIPResolver) updateIpMapping() {
-	// because IP collisions may occur and lead to overwritings in the map, the order is important
+	// because IP collisions may occur and lead to overwrites in the map, the order is important
 	// we go from less "favorable" to more "favorable" -
 	// services -> running pods -> nodes
 
@@ -743,7 +743,7 @@ func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
 	kind := "pod"
 	owner := metav1.GetControllerOf(pod)
 	// climbing up the owners' hierarchy. if an error occurs, we take the data we got and save
-	// the error to know we shouldn't save this resolvment to the descriptors map and retry later.
+	// the error to know we shouldn't save this resolution to the descriptors map and retry later.
 	for owner != nil {
 		name = owner.Name
 		kind = owner.Kind

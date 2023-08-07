@@ -24,7 +24,7 @@ var (
 	})
 	unRoledConnections = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "caretta_current_unroled_connections",
-		Help: `Number of connection which coldn't be distinguished to
+		Help: `Number of connection which couldn't be distinguished to
 		 role (client/server) in the last iteration`,
 	})
 	filteredLoopbackConnections = promauto.NewGauge(prometheus.GaugeOpts{
@@ -152,7 +152,7 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 	var throughput ConnectionThroughputStats
 	err := tracer.connections.Lookup(conn, &throughput)
 	if err != nil {
-		log.Printf("Error retreiving connecion to delete, skipping it: %v", err)
+		log.Printf("Error retrieving connection to delete, skipping it: %v", err)
 		failedConnectionDeletion.Inc()
 		return
 	}

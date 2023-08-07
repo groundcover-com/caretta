@@ -97,7 +97,7 @@ victoria-metrics-single:
                 replacement: $1
                 action: keep
               - action: labelmap
-                regex: __meta_kubrnetes_pod_label_(.+)
+                regex: __meta_kubernetes_pod_label_(.+)
               - source_labels: [__meta_kubernetes_pod_name]
                 action: replace
                 target_label: caretta_pod
