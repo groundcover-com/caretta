@@ -359,7 +359,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P4169E866C3094E38"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "query_result(caretta_links_observed)",
         "hide": 0,
@@ -390,7 +390,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P4169E866C3094E38"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "query_result(caretta_links_observed)",
         "hide": 0,
@@ -421,7 +421,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P4169E866C3094E38"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "query_result(caretta_links_observed)",
         "hide": 0,
@@ -453,7 +453,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "P4169E866C3094E38"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(server_port)",
         "hide": 0,
