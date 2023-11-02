@@ -124,7 +124,12 @@ grafana:
         access: proxy
         url: "http://caretta-vm:8428"
         editable: "true"
-  
+
+  sidecar:
+    dashboards:
+      label: grafana_dashboard
+      labelValue: "" 
+
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
