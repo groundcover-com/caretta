@@ -32,6 +32,25 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# -- Prometheus PodMonitor configuration -- to install caretta with the PodMonitor
+# you must have Prometheus already installed and running. If you do not have Prometheus installed, enabling this will
+# have no effect.
+podMonitor:
+  # -- enabled determines whether a podMonitor should be deployed
+  enabled: false
+  # -- The namespace where Prometheus expects to find service monitors
+  namespace: ~
+  # -- Interval at which metrics should be scraped. If not specified Prometheus’ global scrape interval is used.
+  interval: ~
+  # -- Additional annotations for the podMonitor
+  annotations: {}
+  # -- Additional labels for the podMonitor
+  labels: {}
+  # -- HonorLabels chooses the metric’s labels on collisions with target labels
+  honorLabels: true
+  # -- EndpointAdditionalProperties allows setting additional properties on the endpoint such as relabelings, metricRelabelings etc.
+  endpointAdditionalProperties: {}
+
 podAnnotations: {}
 
 podSecurityContext: {}
