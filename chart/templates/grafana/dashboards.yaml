@@ -3,6 +3,10 @@ kind: ConfigMap
 metadata:
   name: caretta-grafana-dashboards
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if $.Values.grafana.sidecar.dashboards.enabled }}
+    {{ $.Values.grafana.sidecar.dashboards.label }}: {{ $.Values.grafana.sidecar.dashboards.labelValue | quote }}
+    {{- end }}
 data: 
   dashboard.json: |-
 {{ .Files.Get "dashboard.json" | indent 4}}
