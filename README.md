@@ -98,7 +98,7 @@ kubectl port-forward --namespace caretta <grafana-pod-name> 3000:3000
 
 Caretta uses [Victoria Metrics](https://victoriametrics.com/) to collect and publish its metrics, and the outcome can be consumed by **any Prometheus-compatible dashboard**.
 
-Caretta's main metric is `caretta_links_observed` (Gauge). It uses the following labels to represent a specific connection (network socket) going through the cluster:
+Caretta's main metric is `caretta_links_observed` (Counter). It uses the following labels to represent a specific connection (network socket) going through the cluster:
 * `client_name` - either a name of a kubernetes entity, if resolved, an external domain, if resolved, or an IP address.
 * `client_namespace` - either the namespace of the kubernetes entity, or "node", or "external".
 * `client_kind` - either the kind of the kubernetes entity, or "node", or "external".
