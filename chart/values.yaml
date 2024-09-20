@@ -4,6 +4,9 @@ prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
 
 rbac:
+  # With the release of Kubernetes v1.25, PodSecurityPolicy has been removed.
+  # You can read more information about the removal of PodSecurityPolicy in the Kubernetes 1.25 release notes.
+  # See: https://kubernetes.io/blog/2021/04/06/podsecuritypolicy-deprecation-past-present-and-future/
   pspEnabled: true
   sccEnabled: true
 image:
@@ -83,7 +86,7 @@ victoria-metrics-single:
           scrape_interval: 15s
 
         scrape_configs:
-          - job_name:       'caretta'
+          - job_name: 'caretta'
             metrics_path: /metrics
             scrape_interval: 5s
             kubernetes_sd_configs:
