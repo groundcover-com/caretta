@@ -11,6 +11,7 @@ const (
 	defaultPrometheusPort         = ":7117"
 	defaultPollingIntervalSeconds = 5
 	defaultShouldResolveDns       = false
+	defaultTraverseUpHierarchy    = true
 )
 
 type carettaConfig struct {
@@ -18,6 +19,7 @@ type carettaConfig struct {
 	prometheusPort         string
 	prometheusEndpoint     string
 	pollingIntervalSeconds int
+	traverseUpHierarchy    bool
 }
 
 // environment variables based, encapsulated to enable future changes
@@ -51,10 +53,19 @@ func readConfig() carettaConfig {
 		}
 	}
 
+	traverseUpHierarchy := defaultTraverseUpHierarchy
+	if val := os.Getenv("TRAVERSE_UP_HIERARCHY"); val != "" {
+		valBool, err := strconv.ParseBool(val)
+		if err == nil {
+			traverseUpHierarchy = valBool
+		}
+	}
+
 	return carettaConfig{
 		shouldResolveDns:       shouldResolveDns,
 		prometheusPort:         port,
 		prometheusEndpoint:     endpoint,
 		pollingIntervalSeconds: interval,
+		traverseUpHierarchy:    traverseUpHierarchy,
 	}
 }

@@ -22,7 +22,7 @@ var (
 		Name: "caretta_links_observed",
 		Help: "total bytes_sent value of links observed by caretta since its launch",
 	}, []string{
-		"link_id", "client_id", "client_name", "client_namespace", "client_kind", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
+		"link_id", "client_id", "client_name", "client_namespace", "client_kind", "client_owner", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
 	})
 )
 
@@ -47,7 +47,7 @@ func (caretta *Caretta) Start() {
 	if err != nil {
 		log.Fatalf("Error getting kubernetes clientset: %v", err)
 	}
-	resolver, err := caretta_k8s.NewK8sIPResolver(clientset, caretta.config.shouldResolveDns)
+	resolver, err := caretta_k8s.NewK8sIPResolver(clientset, caretta.config.shouldResolveDns, caretta.config.traverseUpHierarchy)
 	if err != nil {
 		log.Fatalf("Error creating resolver: %v", err)
 	}
@@ -112,6 +112,7 @@ func (caretta *Caretta) handleLink(link *NetworkLink, throughput uint64) {
 		"client_name":      link.Client.Name,
 		"client_namespace": link.Client.Namespace,
 		"client_kind":      link.Client.Kind,
+		"client_owner":     link.Client.Owner,
 		"server_id":        strconv.Itoa(int(fnvHash(link.Server.Name + link.Server.Namespace))),
 		"server_name":      link.Server.Name,
 		"server_namespace": link.Server.Namespace,
