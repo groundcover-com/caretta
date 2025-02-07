@@ -2,6 +2,7 @@ enableDnsResolving: true
 prometheusPort: 7117
 prometheusEndpoint: "/metrics"
 pollIntervalSeconds: 5
+traverseUpHierarchy: true
 
 rbac:
   pspEnabled: true
@@ -18,7 +19,7 @@ fullnameOverride: ""
 resources:
   limits:
     cpu: 150m
-    memory: 300Mi
+    memory: 500Mi
   requests:
     cpu: 10m
     memory: 50Mi
@@ -37,7 +38,7 @@ podAnnotations: {}
 podSecurityContext: {}
   # fsGroup: 2000
 
-securityContext:  
+securityContext:
   privileged: true
   readOnlyRootFilesystem: true
   # capabilities:
@@ -63,7 +64,7 @@ victoria-metrics-single:
   server:
     image:
       repository: quay.io/groundcover/victoria-metrics
-    resources: 
+    resources:
       limits:
         cpu: 300m
         memory: 350Mi
@@ -76,7 +77,7 @@ victoria-metrics-single:
        size: 16Gi # change enabled to true if you pv is required
 
     scrape:
-      enabled: true       
+      enabled: true
 
       config:
         global:
@@ -115,7 +116,7 @@ grafana:
     requests:
       memory: 50Mi
       cpu: 5m
-  datasources:  
+  datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
@@ -128,7 +129,7 @@ grafana:
   sidecar:
     dashboards:
       label: grafana_dashboard
-      labelValue: "" 
+      labelValue: ""
 
   dashboardProviders:
     dashboardproviders.yaml:
@@ -143,14 +144,14 @@ grafana:
         options:
           path: /var/lib/grafana/dashboards
           foldersFromFilesStructure: true
-  
-  dashboardsConfigMaps: 
+
+  dashboardsConfigMaps:
     default: "caretta-grafana-dashboards"
 
   grafana.ini:
     auth.anonymous:
       enabled: true
     dashboards:
-      default_home_dashboard_path: /var/lib/grafana/dashboards/default/dashboard.json 
+      default_home_dashboard_path: /var/lib/grafana/dashboards/default/dashboard.json
   adminUser: "admin"
   adminPassword: "caretta"

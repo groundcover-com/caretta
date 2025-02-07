@@ -54,6 +54,8 @@ spec:
               value: "{{ .Values.prometheusEndpoint }}"
             - name: "POLL_INTERVAL"
               value: "{{ .Values.pollIntervalSeconds }}"
+            - name: "TRAVERSE_UP_HIERARCHY"
+              value: "{{ .Values.traverseUpHierarchy }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
