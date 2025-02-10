@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	caretta_k8s "github.com/groundcover-com/caretta/pkg/k8s"
@@ -23,6 +22,12 @@ var (
 		Help: "total bytes_sent value of links observed by caretta since its launch",
 	}, []string{
 		"link_id", "client_id", "client_name", "client_namespace", "client_kind", "client_owner", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
+	})
+	connectionsMetrics = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "caretta_connections_observed",
+		Help: "state of connections observed by caretta since its launch",
+	}, []string{
+		"connection_id", "connection_state", "client_id", "client_name", "client_namespace", "client_kind", "client_owner", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
 	})
 )
 
@@ -76,15 +81,20 @@ func (caretta *Caretta) Start() {
 				return
 			case <-pollingTicker.C:
 				var links map[NetworkLink]uint64
+				var connections []ConnectionLink
 
 				if err != nil {
 					log.Printf("Error updating snapshot of cluster state, skipping iteration")
 					continue
 				}
 
-				pastLinks, links = caretta.tracer.TracesPollingIteration(pastLinks)
+				pastLinks, links, connections = caretta.tracer.TracesPollingIteration(pastLinks)
 				for link, throughput := range links {
 					caretta.handleLink(&link, throughput)
+				}
+
+				for _, connection := range connections {
+					caretta.handleConnection(&connection)
 				}
 			}
 		}
@@ -122,6 +132,24 @@ func (caretta *Caretta) handleLink(link *NetworkLink, throughput uint64) {
 	}).Set(float64(throughput))
 }
 
+func (caretta *Caretta) handleConnection(connection *ConnectionLink) {
+	connectionsMetrics.With(prometheus.Labels{
+		"connection_id":    strconv.Itoa(int(fnvHash(connection.Client.Name+connection.Client.Namespace+connection.Server.Name+connection.Server.Namespace) + connection.Role)),
+		"connection_state": connection.State,
+		"client_id":        strconv.Itoa(int(fnvHash(connection.Client.Name + connection.Client.Namespace))),
+		"client_name":      connection.Client.Name,
+		"client_namespace": connection.Client.Namespace,
+		"client_kind":      connection.Client.Kind,
+		"client_owner":     connection.Client.Owner,
+		"server_id":        strconv.Itoa(int(fnvHash(connection.Server.Name + connection.Server.Namespace))),
+		"server_name":      connection.Server.Name,
+		"server_namespace": connection.Server.Namespace,
+		"server_kind":      connection.Server.Kind,
+		"server_port":      strconv.Itoa(int(connection.ServerPort)),
+		"role":             strconv.Itoa(int(connection.Role)),
+	}).Set(1)
+}
+
 func (caretta *Caretta) getClientSet() (*kubernetes.Clientset, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -144,13 +172,13 @@ func fnvHash(s string) uint32 {
 
 // gets a hostname (probably in the pattern name:namespace) and split it to name and namespace
 // basically a wrapped Split function to handle some edge cases
-func splitNamespace(fullname string) (string, string) {
-	if !strings.Contains(fullname, ":") {
-		return fullname, ""
-	}
-	s := strings.Split(fullname, ":")
-	if len(s) > 1 {
-		return s[0], s[1]
-	}
-	return fullname, ""
-}
+// func splitNamespace(fullname string) (string, string) {
+// 	if !strings.Contains(fullname, ":") {
+// 		return fullname, ""
+// 	}
+// 	s := strings.Split(fullname, ":")
+// 	if len(s) > 1 {
+// 		return s[0], s[1]
+// 	}
+// 	return fullname, ""
+// }

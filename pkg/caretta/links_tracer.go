@@ -89,12 +89,14 @@ func (tracer *LinksTracer) Stop() error {
 
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64) {
+func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64, []ConnectionLink) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
 	unroledCounter := 0
 	loopbackCounter := 0
+
+	currentConnections := []ConnectionLink{}
 
 	currentLinks := make(map[NetworkLink]uint64)
 	var connectionsToDelete []ConnectionIdentifier
@@ -127,6 +129,24 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		}
 
 		currentLinks[link] += throughput.BytesSent
+
+		// Update observed connections
+		state := "open"
+		if throughput.IsActive == 0 {
+			state = "close"
+		} else if conn.Role == ServerConnectionRole {
+			state = "accept"
+		}
+
+		connectionLink := ConnectionLink{
+			Client:     link.Client,
+			Server:     link.Server,
+			ServerPort: link.ServerPort,
+			Role:       conn.Role,
+			State:      state,
+		}
+
+		currentConnections = append(currentConnections, connectionLink)
 	}
 
 	mapSize.Set(float64(itemsCounter))
@@ -143,7 +163,7 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		tracer.deleteAndStoreConnection(&conn, pastLinks)
 	}
 
-	return pastLinks, currentLinks
+	return pastLinks, currentLinks, currentConnections
 
 }
 
