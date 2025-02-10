@@ -100,7 +100,7 @@ static inline enum connection_role get_sock_role(struct sock* sock) {
     return CONNECTION_ROLE_UNKNOWN;
   }
 
-  return max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT : CONNECTION_ROLE_SERVER;      
+  return max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT : CONNECTION_ROLE_SERVER;
 }
 
 // probing the tcp_data_queue kernel function, and adding the connection
@@ -147,7 +147,7 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
 
     return BPF_SUCCESS;
 
-  } 
+  }
 
   conn_id.pid = sock_info->pid;
   conn_id.id = sock_info->id;
@@ -155,8 +155,8 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
   if (!sock_info->is_active) {
     return -1;
   }
-  throughput.is_active = sock_info->is_active; 
-  
+  throughput.is_active = sock_info->is_active;
+
   bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
   return BPF_SUCCESS;
@@ -254,4 +254,77 @@ static int handle_sock_set_state(struct set_state_args *args) {
   }
 
   return BPF_SUCCESS;
+}
+
+SEC("kprobe/tcp_v4_connect")
+int BPF_PROG(kprobe__tcp_v4_connect, struct sock *sk) {
+    struct connection_identifier conn_id = {};
+    struct connection_throughput_stats throughput = {};
+
+    if (parse_sock_data(sk, &conn_id.tuple, &throughput) == BPF_ERROR) {
+        return BPF_ERROR;
+    }
+
+    struct sock_info info = {
+        .pid = bpf_get_current_pid_tgid() >> 32,
+        .role = CONNECTION_ROLE_CLIENT,
+        .is_active = true,
+        .id = get_unique_id(),
+    };
+
+    bpf_map_update_elem(&sock_infos, &sk, &info, BPF_ANY);
+    conn_id.pid = info.pid;
+    conn_id.id = info.id;
+    conn_id.role = info.role;
+    throughput.is_active = true;
+
+    bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
+    return 0;
+}
+
+SEC("kprobe/tcp_rcv_state_process")
+int BPF_PROG(kprobe__tcp_rcv_state_process, struct sock *sk) {
+    struct connection_identifier conn_id = {};
+    struct connection_throughput_stats throughput = {};
+
+    if (parse_sock_data(sk, &conn_id.tuple, &throughput) == BPF_ERROR) {
+        return BPF_ERROR;
+    }
+
+    struct sock_info *sock_info = bpf_map_lookup_elem(&sock_infos, &sk);
+    if (sock_info == NULL) {
+        return BPF_SUCCESS;
+    }
+
+    conn_id.pid = sock_info->pid;
+    conn_id.id = sock_info->id;
+    conn_id.role = sock_info->role;
+    throughput.is_active = sock_info->is_active;
+
+    bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
+    return 0;
+}
+
+SEC("kprobe/tcp_close")
+int BPF_PROG(kprobe__tcp_close, struct sock *sk) {
+    struct connection_identifier conn_id = {};
+    struct connection_throughput_stats throughput = {};
+
+    if (parse_sock_data(sk, &conn_id.tuple, &throughput) == BPF_ERROR) {
+        return BPF_ERROR;
+    }
+
+    struct sock_info *sock_info = bpf_map_lookup_elem(&sock_infos, &sk);
+    if (sock_info == NULL) {
+        return BPF_SUCCESS;
+    }
+
+    conn_id.pid = sock_info->pid;
+    conn_id.id = sock_info->id;
+    conn_id.role = sock_info->role;
+    throughput.is_active = false;
+
+    bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
+    bpf_map_delete_elem(&sock_infos, &sk);
+    return 0;
 }

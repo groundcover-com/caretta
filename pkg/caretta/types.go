@@ -29,6 +29,14 @@ type NetworkLink struct {
 	Role       uint32
 }
 
+type ConnectionLink struct {
+	Client     caretta_k8s.Workload
+	Server     caretta_k8s.Workload
+	ServerPort uint16
+	Role       uint32
+	State      string
+}
+
 type ConnectionTuple struct {
 	SrcIp   uint32
 	DstIp   uint32
