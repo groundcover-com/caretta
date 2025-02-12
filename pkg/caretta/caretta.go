@@ -73,6 +73,7 @@ func (caretta *Caretta) Start() {
 	pollingTicker := time.NewTicker(time.Duration(caretta.config.pollingIntervalSeconds) * time.Second)
 
 	pastLinks := make(map[NetworkLink]uint64)
+	pastConnections := []ConnectionLink{}
 
 	go func() {
 		for {
@@ -88,7 +89,7 @@ func (caretta *Caretta) Start() {
 					continue
 				}
 
-				pastLinks, links, connections = caretta.tracer.TracesPollingIteration(pastLinks)
+				pastLinks, links, pastConnections, connections = caretta.tracer.TracesPollingIteration(pastLinks, pastConnections)
 				for link, throughput := range links {
 					caretta.handleLink(&link, throughput)
 				}

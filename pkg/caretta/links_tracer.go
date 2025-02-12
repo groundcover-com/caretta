@@ -89,7 +89,7 @@ func (tracer *LinksTracer) Stop() error {
 
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64, []ConnectionLink) {
+func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64, pastConnections []ConnectionLink) (map[NetworkLink]uint64, map[NetworkLink]uint64, []ConnectionLink, []ConnectionLink) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
@@ -146,7 +146,31 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 			State:      state,
 		}
 
-		currentConnections = append(currentConnections, connectionLink)
+		// Try to find the connection in the past connections
+		addToConnections := true
+		for i, pastConnection := range pastConnections {
+			// If the client, server and port are the same, and the state is close,
+			// remove the connection from the past connections and don't add it to the current connections
+			if pastConnection.Client == connectionLink.Client &&
+				pastConnection.Server == connectionLink.Server &&
+				pastConnection.ServerPort == connectionLink.ServerPort &&
+				pastConnection.Role == connectionLink.Role {
+
+				if pastConnection.State == "close" && state == "close" {
+					pastConnections = append(pastConnections[:i], pastConnections[i+1:]...)
+					addToConnections = false
+					break
+				}
+			}
+		}
+
+		if addToConnections {
+			currentConnections = append(currentConnections, connectionLink)
+
+			if throughput.IsActive == 0 {
+				pastConnections = append(pastConnections, connectionLink)
+			}
+		}
 	}
 
 	mapSize.Set(float64(itemsCounter))
@@ -163,7 +187,7 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		tracer.deleteAndStoreConnection(&conn, pastLinks)
 	}
 
-	return pastLinks, currentLinks, currentConnections
+	return pastLinks, currentLinks, pastConnections, currentConnections
 
 }
 
