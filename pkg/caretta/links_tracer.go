@@ -89,16 +89,15 @@ func (tracer *LinksTracer) Stop() error {
 
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64, pastConnections []ConnectionLink) (map[NetworkLink]uint64, map[NetworkLink]uint64, []ConnectionLink, []ConnectionLink) {
+func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64, pastTcpConnections map[TcpConnection]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64, map[TcpConnection]uint64, map[TcpConnection]uint64) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
 	unroledCounter := 0
 	loopbackCounter := 0
 
-	currentConnections := []ConnectionLink{}
-
 	currentLinks := make(map[NetworkLink]uint64)
+	currentTcpConnections := make(map[TcpConnection]uint64)
 	var connectionsToDelete []ConnectionIdentifier
 
 	var conn ConnectionIdentifier
@@ -128,49 +127,14 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 			continue
 		}
 
+		tcpConn, err := tracer.reduceConnectionToTcp(conn, throughput)
+		if err != nil {
+			unroledCounter++
+			continue
+		}
+
 		currentLinks[link] += throughput.BytesSent
-
-		// Update observed connections
-		state := "open"
-		if throughput.IsActive == 0 {
-			state = "close"
-		} else if conn.Role == ServerConnectionRole {
-			state = "accept"
-		}
-
-		connectionLink := ConnectionLink{
-			Client:     link.Client,
-			Server:     link.Server,
-			ServerPort: link.ServerPort,
-			Role:       conn.Role,
-			State:      state,
-		}
-
-		// Try to find the connection in the past connections
-		addToConnections := true
-		for i, pastConnection := range pastConnections {
-			// If the client, server and port are the same, and the state is close,
-			// remove the connection from the past connections and don't add it to the current connections
-			if pastConnection.Client == connectionLink.Client &&
-				pastConnection.Server == connectionLink.Server &&
-				pastConnection.ServerPort == connectionLink.ServerPort &&
-				pastConnection.Role == connectionLink.Role {
-
-				if pastConnection.State == "close" && state == "close" {
-					pastConnections = append(pastConnections[:i], pastConnections[i+1:]...)
-					addToConnections = false
-					break
-				}
-			}
-		}
-
-		if addToConnections {
-			currentConnections = append(currentConnections, connectionLink)
-
-			if throughput.IsActive == 0 {
-				pastConnections = append(pastConnections, connectionLink)
-			}
-		}
+		currentTcpConnections[tcpConn] += throughput.BytesSent
 	}
 
 	mapSize.Set(float64(itemsCounter))
@@ -182,16 +146,21 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		currentLinks[pastLink] += pastThroughput
 	}
 
-	// delete connections marked to delete
-	for _, conn := range connectionsToDelete {
-		tracer.deleteAndStoreConnection(&conn, pastLinks)
+	// add past connections
+	for pastConn, pastThroughput := range pastTcpConnections {
+		currentTcpConnections[pastConn] += pastThroughput
 	}
 
-	return pastLinks, currentLinks, pastConnections, currentConnections
+	// delete connections marked to delete
+	for _, conn := range connectionsToDelete {
+		tracer.deleteAndStoreConnection(&conn, pastLinks, pastTcpConnections)
+	}
+
+	return pastLinks, currentLinks, pastTcpConnections, currentTcpConnections
 
 }
 
-func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64) {
+func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64, pastTcpConnections map[TcpConnection]uint64) {
 	// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
 	var throughput ConnectionThroughputStats
 	err := tracer.connections.Lookup(conn, &throughput)
@@ -212,7 +181,17 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		log.Printf("Error reducing connection to link when deleting: %v", err)
 		return
 	}
+
+	// if deletion is successful, add it to past tcp connections
+	tcpConn, err := tracer.reduceConnectionToTcp(*conn, throughput)
+	if err != nil {
+		log.Printf("Error reducing connection to tcp connection when deleting: %v", err)
+		return
+	}
+
 	pastLinks[link] += throughput.BytesSent
+	pastTcpConnections[tcpConn] += throughput.BytesSent
+
 	mapDeletions.Inc()
 }
 
@@ -238,6 +217,37 @@ func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifie
 		return NetworkLink{}, errors.New("connection's role is unknown")
 	}
 	return link, nil
+}
+
+// reduce a specific connection to a general tcp connection
+func (tracer *LinksTracer) reduceConnectionToTcp(connection ConnectionIdentifier, throughput ConnectionThroughputStats) (TcpConnection, error) {
+	var tcpConn TcpConnection
+	tcpConn.Role = connection.Role
+
+	srcWorkload := tracer.resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
+	dstWorkload := tracer.resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
+
+	if connection.Role == ClientConnectionRole {
+		// Src is Client, Dst is Server, Port is DstPort
+		tcpConn.Client = srcWorkload
+		tcpConn.Server = dstWorkload
+		tcpConn.ServerPort = connection.Tuple.DstPort
+		tcpConn.State = TcpConnectionOpenState
+	} else if connection.Role == ServerConnectionRole {
+		// Dst is Client, Src is Server, Port is SrcPort
+		tcpConn.Client = dstWorkload
+		tcpConn.Server = srcWorkload
+		tcpConn.ServerPort = connection.Tuple.SrcPort
+		tcpConn.State = TcpConnectionAcceptState
+	} else {
+		return TcpConnection{}, errors.New("connection's role is unknown")
+	}
+
+	if throughput.IsActive == 0 {
+		tcpConn.State = TcpConnectionClosedState
+	}
+
+	return tcpConn, nil
 }
 
 func isAddressLoopback(ip uint32) bool {

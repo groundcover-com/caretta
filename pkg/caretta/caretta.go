@@ -73,7 +73,7 @@ func (caretta *Caretta) Start() {
 	pollingTicker := time.NewTicker(time.Duration(caretta.config.pollingIntervalSeconds) * time.Second)
 
 	pastLinks := make(map[NetworkLink]uint64)
-	pastConnections := []ConnectionLink{}
+	pastTcpConnections := make(map[TcpConnection]uint64)
 
 	go func() {
 		for {
@@ -82,20 +82,20 @@ func (caretta *Caretta) Start() {
 				return
 			case <-pollingTicker.C:
 				var links map[NetworkLink]uint64
-				var connections []ConnectionLink
+				var tcpConnections map[TcpConnection]uint64
 
 				if err != nil {
 					log.Printf("Error updating snapshot of cluster state, skipping iteration")
 					continue
 				}
 
-				pastLinks, links, pastConnections, connections = caretta.tracer.TracesPollingIteration(pastLinks, pastConnections)
+				pastLinks, links, pastTcpConnections, tcpConnections = caretta.tracer.TracesPollingIteration(pastLinks, pastTcpConnections)
 				for link, throughput := range links {
 					caretta.handleLink(&link, throughput)
 				}
 
-				for _, connection := range connections {
-					caretta.handleConnection(&connection)
+				for connection, throughput := range tcpConnections {
+					caretta.handleTcpConnection(&connection, throughput)
 				}
 			}
 		}
@@ -133,10 +133,20 @@ func (caretta *Caretta) handleLink(link *NetworkLink, throughput uint64) {
 	}).Set(float64(throughput))
 }
 
-func (caretta *Caretta) handleConnection(connection *ConnectionLink) {
+func (caretta *Caretta) handleTcpConnection(connection *TcpConnection, throughput uint64) {
+	tcpState := "unknown"
+	switch connection.State {
+	case TcpConnectionOpenState:
+		tcpState = "open"
+	case TcpConnectionAcceptState:
+		tcpState = "accept"
+	case TcpConnectionClosedState:
+		tcpState = "closed"
+	}
+
 	connectionsMetrics.With(prometheus.Labels{
 		"connection_id":    strconv.Itoa(int(fnvHash(connection.Client.Name+connection.Client.Namespace+connection.Server.Name+connection.Server.Namespace) + connection.Role)),
-		"connection_state": connection.State,
+		"connection_state": tcpState,
 		"client_id":        strconv.Itoa(int(fnvHash(connection.Client.Name + connection.Client.Namespace))),
 		"client_name":      connection.Client.Name,
 		"client_namespace": connection.Client.Namespace,
@@ -148,7 +158,7 @@ func (caretta *Caretta) handleConnection(connection *ConnectionLink) {
 		"server_kind":      connection.Server.Kind,
 		"server_port":      strconv.Itoa(int(connection.ServerPort)),
 		"role":             strconv.Itoa(int(connection.Role)),
-	}).Set(1)
+	}).Set(float64(throughput))
 }
 
 func (caretta *Caretta) getClientSet() (*kubernetes.Clientset, error) {
