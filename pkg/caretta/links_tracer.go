@@ -22,11 +22,6 @@ var (
 		Name: "caretta_failed_deletions",
 		Help: "Counter of failed deletion of closed connection from map",
 	})
-	unRoledConnections = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "caretta_current_unroled_connections",
-		Help: `Number of connection which couldn't be distinguished to
-		 role (client/server) in the last iteration`,
-	})
 	filteredLoopbackConnections = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "caretta_current_loopback_connections",
 		Help: `Number of loopback connections observed in the last iteration`,
@@ -89,15 +84,14 @@ func (tracer *LinksTracer) Stop() error {
 
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64, pastTcpConnections map[TcpConnection]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64, map[TcpConnection]uint64, map[TcpConnection]uint64) {
+func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64, []TcpConnection) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
-	unroledCounter := 0
 	loopbackCounter := 0
 
 	currentLinks := make(map[NetworkLink]uint64)
-	currentTcpConnections := make(map[TcpConnection]uint64)
+	currentTcpConnections := []TcpConnection{}
 	var connectionsToDelete []ConnectionIdentifier
 
 	var conn ConnectionIdentifier
@@ -123,22 +117,19 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		// filter unroled connections (probably indicates a bug)
 		link, err := tracer.reduceConnectionToLink(conn)
 		if conn.Role == UnknownConnectionRole || err != nil {
-			unroledCounter++
 			continue
 		}
 
 		tcpConn, err := tracer.reduceConnectionToTcp(conn, throughput)
 		if err != nil {
-			unroledCounter++
 			continue
 		}
 
 		currentLinks[link] += throughput.BytesSent
-		currentTcpConnections[tcpConn] += throughput.BytesSent
+		currentTcpConnections = append(currentTcpConnections, tcpConn)
 	}
 
 	mapSize.Set(float64(itemsCounter))
-	unRoledConnections.Set(float64(unroledCounter))
 	filteredLoopbackConnections.Set(float64(loopbackCounter))
 
 	// add past links
@@ -146,21 +137,16 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		currentLinks[pastLink] += pastThroughput
 	}
 
-	// add past connections
-	for pastConn, pastThroughput := range pastTcpConnections {
-		currentTcpConnections[pastConn] += pastThroughput
-	}
-
 	// delete connections marked to delete
 	for _, conn := range connectionsToDelete {
-		tracer.deleteAndStoreConnection(&conn, pastLinks, pastTcpConnections)
+		tracer.deleteAndStoreConnection(&conn, pastLinks)
 	}
 
-	return pastLinks, currentLinks, pastTcpConnections, currentTcpConnections
+	return pastLinks, currentLinks, currentTcpConnections
 
 }
 
-func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64, pastTcpConnections map[TcpConnection]uint64) {
+func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, pastLinks map[NetworkLink]uint64) {
 	// newer kernels introduce batch map operation, but it might not be available so we delete item-by-item
 	var throughput ConnectionThroughputStats
 	err := tracer.connections.Lookup(conn, &throughput)
@@ -182,15 +168,7 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		return
 	}
 
-	// if deletion is successful, add it to past tcp connections
-	tcpConn, err := tracer.reduceConnectionToTcp(*conn, throughput)
-	if err != nil {
-		log.Printf("Error reducing connection to tcp connection when deleting: %v", err)
-		return
-	}
-
 	pastLinks[link] += throughput.BytesSent
-	pastTcpConnections[tcpConn] += throughput.BytesSent
 
 	mapDeletions.Inc()
 }

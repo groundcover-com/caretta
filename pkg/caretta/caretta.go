@@ -23,11 +23,11 @@ var (
 	}, []string{
 		"link_id", "client_id", "client_name", "client_namespace", "client_kind", "client_owner", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
 	})
-	connectionsMetrics = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "caretta_connections_observed",
-		Help: "state of connections observed by caretta since its launch",
+	tcpStateMetrics = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "caretta_tcp_states",
+		Help: "state of TCP connections observed by caretta since its launch",
 	}, []string{
-		"connection_id", "connection_state", "client_id", "client_name", "client_namespace", "client_kind", "client_owner", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
+		"link_id", "client_id", "client_name", "client_namespace", "client_kind", "client_owner", "server_id", "server_name", "server_namespace", "server_kind", "server_port", "role",
 	})
 )
 
@@ -73,7 +73,6 @@ func (caretta *Caretta) Start() {
 	pollingTicker := time.NewTicker(time.Duration(caretta.config.pollingIntervalSeconds) * time.Second)
 
 	pastLinks := make(map[NetworkLink]uint64)
-	pastTcpConnections := make(map[TcpConnection]uint64)
 
 	go func() {
 		for {
@@ -82,20 +81,20 @@ func (caretta *Caretta) Start() {
 				return
 			case <-pollingTicker.C:
 				var links map[NetworkLink]uint64
-				var tcpConnections map[TcpConnection]uint64
+				var tcpConnections []TcpConnection
 
 				if err != nil {
 					log.Printf("Error updating snapshot of cluster state, skipping iteration")
 					continue
 				}
 
-				pastLinks, links, pastTcpConnections, tcpConnections = caretta.tracer.TracesPollingIteration(pastLinks, pastTcpConnections)
+				pastLinks, links, tcpConnections = caretta.tracer.TracesPollingIteration(pastLinks)
 				for link, throughput := range links {
 					caretta.handleLink(&link, throughput)
 				}
 
-				for connection, throughput := range tcpConnections {
-					caretta.handleTcpConnection(&connection, throughput)
+				for _, connection := range tcpConnections {
+					caretta.handleTcpConnection(&connection)
 				}
 			}
 		}
@@ -133,20 +132,9 @@ func (caretta *Caretta) handleLink(link *NetworkLink, throughput uint64) {
 	}).Set(float64(throughput))
 }
 
-func (caretta *Caretta) handleTcpConnection(connection *TcpConnection, throughput uint64) {
-	tcpState := "unknown"
-	switch connection.State {
-	case TcpConnectionOpenState:
-		tcpState = "open"
-	case TcpConnectionAcceptState:
-		tcpState = "accept"
-	case TcpConnectionClosedState:
-		tcpState = "closed"
-	}
-
-	connectionsMetrics.With(prometheus.Labels{
-		"connection_id":    strconv.Itoa(int(fnvHash(connection.Client.Name+connection.Client.Namespace+connection.Server.Name+connection.Server.Namespace) + connection.Role)),
-		"connection_state": tcpState,
+func (caretta *Caretta) handleTcpConnection(connection *TcpConnection) {
+	tcpStateMetrics.With(prometheus.Labels{
+		"link_id":          strconv.Itoa(int(fnvHash(connection.Client.Name+connection.Client.Namespace+connection.Server.Name+connection.Server.Namespace) + connection.Role)),
 		"client_id":        strconv.Itoa(int(fnvHash(connection.Client.Name + connection.Client.Namespace))),
 		"client_name":      connection.Client.Name,
 		"client_namespace": connection.Client.Namespace,
@@ -158,7 +146,7 @@ func (caretta *Caretta) handleTcpConnection(connection *TcpConnection, throughpu
 		"server_kind":      connection.Server.Kind,
 		"server_port":      strconv.Itoa(int(connection.ServerPort)),
 		"role":             strconv.Itoa(int(connection.Role)),
-	}).Set(float64(throughput))
+	}).Set(float64(connection.State))
 }
 
 func (caretta *Caretta) getClientSet() (*kubernetes.Clientset, error) {

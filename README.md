@@ -48,17 +48,19 @@ Useful values:
 * **victoria-metrics-single.server.persistentVolume.enabled** can be set to *true* if you wish to save Caretta's metrics to a persistent volume *default: false*
 * **pollIntervalSeconds** can be modified to specify the polling and publishing interval of new metrics from the kernel. *default: 5*
 * The built-in Victoria Metrics and Grafana instances can be disabled by changing the values **victoria-metrics-single.enabled** or **grafana.enabled** to false, accordingly. _default: true_
+* Caretta resolves Kubernetes entities to their owners by default. For example, a pod 'pod1' and another pod 'pod2' both belonging to a deployment 'deployment1' will be resolved to 'deployment1'. This can be disabled by setting **traverseUpHierarchy** to false. _default: true_
 
 
 Example yaml for overriding these values:
 ```yaml
-pollIntervalSeconds: 15  # set metrics polling interval 
+pollIntervalSeconds: 15  # set metrics polling interval
+traverseUpHierarchy: false  # disable resolving kubernetes entities to their owners
 
 tolerations:             # set any desired tolerations
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
-    
+
  victoria-metrics-single:
   server:
     persistentVolume:
@@ -83,7 +85,7 @@ Note that if persistent storage was enabled in the installation, it may not be d
 Caretta's helm chart ships an instance of Grafana with a predefined dashboard using data published by Caretta. This dashboard contains some examples to demonstrate the usage of Caretta's metrics.
 
 ### Using the provided Grafana instance
-To access Grafana, port-forward port `3000` from the Grafana pod in Caretta's namespace. 
+To access Grafana, port-forward port `3000` from the Grafana pod in Caretta's namespace.
 
 Using *kubectl*, it should look something like this:
 
@@ -91,7 +93,7 @@ Using *kubectl*, it should look something like this:
 kubectl port-forward --namespace caretta <grafana-pod-name> 3000:3000
 ```
 
-> **_NOTE:_**  Anonymous mode is enabled, making the default dashboard accessible with no login needed. 
+> **_NOTE:_**  Anonymous mode is enabled, making the default dashboard accessible with no login needed.
 >              To edit the default dashboard or create your own dashboard, use the default administrator's credentials user:`admin` ; password:`caretta`.
 
 ### Scraping Caretta's metrics
@@ -117,18 +119,18 @@ caretta_links_observed{client_id="1074587981",client_kind="Deployment",client_na
 ```
 
 #### Example queries  :star:
-```bash 
-increase ((sum (server_port) (caretta_links_observed{client_name="some-client", server_name="some-server}))[15m]) 
+```bash
+increase ((sum (server_port) (caretta_links_observed{client_name="some-client", server_name="some-server}))[15m])
 ```
 will output the throughput observed between some-client and some-server in the last 15 minutes, aggregated by port.
 
-```bash 
+```bash
 sum by (server_name) (rate(caretta_links_observed{client_name="some-client"}))
 ```
 will output the rate of traffic from some-client to servers it communicates with, aggregated by the server's name.
 
-```bash 
-sort_desc(increase((sum by (client_name)(caretta_links_observed{server_namespace="external"}))[5m])) 
+```bash
+sort_desc(increase((sum by (client_name)(caretta_links_observed{server_namespace="external"}))[5m]))
 ```
 will output communication to external servers by client's name, sorted descending.
 
