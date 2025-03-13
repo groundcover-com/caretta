@@ -168,16 +168,3 @@ func fnvHash(s string) uint32 {
 	h.Write([]byte(s))
 	return h.Sum32()
 }
-
-// gets a hostname (probably in the pattern name:namespace) and split it to name and namespace
-// basically a wrapped Split function to handle some edge cases
-// func splitNamespace(fullname string) (string, string) {
-// 	if !strings.Contains(fullname, ":") {
-// 		return fullname, ""
-// 	}
-// 	s := strings.Split(fullname, ":")
-// 	if len(s) > 1 {
-// 		return s[0], s[1]
-// 	}
-// 	return fullname, ""
-// }
