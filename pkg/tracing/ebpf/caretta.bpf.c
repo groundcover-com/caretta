@@ -100,7 +100,7 @@ static inline enum connection_role get_sock_role(struct sock* sock) {
     return CONNECTION_ROLE_UNKNOWN;
   }
 
-  return max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT : CONNECTION_ROLE_SERVER;      
+  return max_ack_backlog == 0 ? CONNECTION_ROLE_CLIENT : CONNECTION_ROLE_SERVER;
 }
 
 // probing the tcp_data_queue kernel function, and adding the connection
@@ -147,7 +147,7 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
 
     return BPF_SUCCESS;
 
-  } 
+  }
 
   conn_id.pid = sock_info->pid;
   conn_id.id = sock_info->id;
@@ -155,8 +155,8 @@ static int handle_tcp_data_queue(struct pt_regs *ctx) {
   if (!sock_info->is_active) {
     return -1;
   }
-  throughput.is_active = sock_info->is_active; 
-  
+  throughput.is_active = sock_info->is_active;
+
   bpf_map_update_elem(&connections, &conn_id, &throughput, BPF_ANY);
 
   return BPF_SUCCESS;

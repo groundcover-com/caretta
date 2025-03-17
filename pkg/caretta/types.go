@@ -8,9 +8,12 @@ import (
 )
 
 const (
-	UnknownConnectionRole = iota
-	ClientConnectionRole  = iota
-	ServerConnectionRole  = iota
+	UnknownConnectionRole    = iota
+	ClientConnectionRole     = iota
+	ServerConnectionRole     = iota
+	TcpConnectionOpenState   = iota
+	TcpConnectionAcceptState = iota
+	TcpConnectionClosedState = iota
 )
 
 type IP uint32
@@ -27,6 +30,14 @@ type NetworkLink struct {
 	Server     caretta_k8s.Workload
 	ServerPort uint16
 	Role       uint32
+}
+
+type TcpConnection struct {
+	Client     caretta_k8s.Workload
+	Server     caretta_k8s.Workload
+	ServerPort uint16
+	Role       uint32
+	State      uint32
 }
 
 type ConnectionTuple struct {

@@ -48,21 +48,23 @@ type clusterSnapshot struct {
 }
 
 type K8sIPResolver struct {
-	clientset        kubernetes.Interface
-	snapshot         clusterSnapshot
-	ipsMap           sync.Map
-	stopSignal       chan bool
-	shouldResolveDns bool
-	dnsResolvedIps   *lrucache.Cache[string, string]
+	clientset           kubernetes.Interface
+	snapshot            clusterSnapshot
+	ipsMap              sync.Map
+	stopSignal          chan bool
+	shouldResolveDns    bool
+	traverseUpHierarchy bool
+	dnsResolvedIps      *lrucache.Cache[string, string]
 }
 
 type Workload struct {
 	Name      string
 	Namespace string
 	Kind      string
+	Owner     string
 }
 
-func NewK8sIPResolver(clientset kubernetes.Interface, resolveDns bool) (*K8sIPResolver, error) {
+func NewK8sIPResolver(clientset kubernetes.Interface, resolveDns bool, traverseUpHierarchy bool) (*K8sIPResolver, error) {
 	var dnsCache *lrucache.Cache[string, string]
 	if resolveDns {
 		var err error
@@ -74,12 +76,13 @@ func NewK8sIPResolver(clientset kubernetes.Interface, resolveDns bool) (*K8sIPRe
 		dnsCache = nil
 	}
 	return &K8sIPResolver{
-		clientset:        clientset,
-		snapshot:         clusterSnapshot{},
-		ipsMap:           sync.Map{},
-		stopSignal:       make(chan bool),
-		shouldResolveDns: resolveDns,
-		dnsResolvedIps:   dnsCache,
+		clientset:           clientset,
+		snapshot:            clusterSnapshot{},
+		ipsMap:              sync.Map{},
+		stopSignal:          make(chan bool),
+		shouldResolveDns:    resolveDns,
+		dnsResolvedIps:      dnsCache,
+		traverseUpHierarchy: traverseUpHierarchy,
 	}, nil
 }
 
@@ -741,22 +744,34 @@ func (resolver *K8sIPResolver) resolvePodDescriptor(pod *v1.Pod) Workload {
 	name := pod.Name
 	namespace := pod.Namespace
 	kind := "pod"
-	owner := metav1.GetControllerOf(pod)
-	// climbing up the owners' hierarchy. if an error occurs, we take the data we got and save
-	// the error to know we shouldn't save this resolution to the descriptors map and retry later.
-	for owner != nil {
-		name = owner.Name
-		kind = owner.Kind
-		owner, err = resolver.getControllerOfOwner(owner)
-		if err != nil {
-			log.Printf("Warning: couldn't retrieve owner of %v - %v. This might happen when starting up", name, err)
-		}
-	}
 	result := Workload{
 		Name:      name,
 		Namespace: namespace,
 		Kind:      kind,
 	}
+
+	if resolver.traverseUpHierarchy {
+		owner := metav1.GetControllerOf(pod)
+		// climbing up the owners' hierarchy. if an error occurs, we take the data we got and save
+		// the error to know we shouldn't save this resolution to the descriptors map and retry later.
+		for owner != nil {
+			name = owner.Name
+			kind = owner.Kind
+			owner, err = resolver.getControllerOfOwner(owner)
+			if err != nil {
+				log.Printf("Warning: couldn't retrieve owner of %v - %v. This might happen when starting up", name, err)
+			}
+		}
+
+		result.Name = name
+		result.Kind = kind
+	} else {
+		owner := metav1.GetControllerOf(pod)
+		if owner != nil {
+			result.Owner = owner.Name
+		}
+	}
+
 	if err == nil {
 		resolver.snapshot.PodDescriptors.Store(pod.UID, result)
 	}

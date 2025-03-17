@@ -22,11 +22,6 @@ var (
 		Name: "caretta_failed_deletions",
 		Help: "Counter of failed deletion of closed connection from map",
 	})
-	unRoledConnections = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "caretta_current_unroled_connections",
-		Help: `Number of connection which couldn't be distinguished to
-		 role (client/server) in the last iteration`,
-	})
 	filteredLoopbackConnections = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "caretta_current_loopback_connections",
 		Help: `Number of loopback connections observed in the last iteration`,
@@ -89,14 +84,14 @@ func (tracer *LinksTracer) Stop() error {
 
 // a single polling from the eBPF maps
 // iterating the traces from the kernel-space, summing each network link
-func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64) {
+func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint64) (map[NetworkLink]uint64, map[NetworkLink]uint64, []TcpConnection) {
 	// outline of an iteration -
 	// filter unwanted connections, sum all connections as links, add past links, and return the new map
 	pollsMade.Inc()
-	unroledCounter := 0
 	loopbackCounter := 0
 
 	currentLinks := make(map[NetworkLink]uint64)
+	currentTcpConnections := []TcpConnection{}
 	var connectionsToDelete []ConnectionIdentifier
 
 	var conn ConnectionIdentifier
@@ -122,15 +117,19 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		// filter unroled connections (probably indicates a bug)
 		link, err := tracer.reduceConnectionToLink(conn)
 		if conn.Role == UnknownConnectionRole || err != nil {
-			unroledCounter++
+			continue
+		}
+
+		tcpConn, err := tracer.reduceConnectionToTcp(conn, throughput)
+		if err != nil {
 			continue
 		}
 
 		currentLinks[link] += throughput.BytesSent
+		currentTcpConnections = append(currentTcpConnections, tcpConn)
 	}
 
 	mapSize.Set(float64(itemsCounter))
-	unRoledConnections.Set(float64(unroledCounter))
 	filteredLoopbackConnections.Set(float64(loopbackCounter))
 
 	// add past links
@@ -143,7 +142,7 @@ func (tracer *LinksTracer) TracesPollingIteration(pastLinks map[NetworkLink]uint
 		tracer.deleteAndStoreConnection(&conn, pastLinks)
 	}
 
-	return pastLinks, currentLinks
+	return pastLinks, currentLinks, currentTcpConnections
 
 }
 
@@ -168,7 +167,9 @@ func (tracer *LinksTracer) deleteAndStoreConnection(conn *ConnectionIdentifier, 
 		log.Printf("Error reducing connection to link when deleting: %v", err)
 		return
 	}
+
 	pastLinks[link] += throughput.BytesSent
+
 	mapDeletions.Inc()
 }
 
@@ -194,6 +195,37 @@ func (tracer *LinksTracer) reduceConnectionToLink(connection ConnectionIdentifie
 		return NetworkLink{}, errors.New("connection's role is unknown")
 	}
 	return link, nil
+}
+
+// reduce a specific connection to a general tcp connection
+func (tracer *LinksTracer) reduceConnectionToTcp(connection ConnectionIdentifier, throughput ConnectionThroughputStats) (TcpConnection, error) {
+	var tcpConn TcpConnection
+	tcpConn.Role = connection.Role
+
+	srcWorkload := tracer.resolver.ResolveIP(IP(connection.Tuple.SrcIp).String())
+	dstWorkload := tracer.resolver.ResolveIP(IP(connection.Tuple.DstIp).String())
+
+	if connection.Role == ClientConnectionRole {
+		// Src is Client, Dst is Server, Port is DstPort
+		tcpConn.Client = srcWorkload
+		tcpConn.Server = dstWorkload
+		tcpConn.ServerPort = connection.Tuple.DstPort
+		tcpConn.State = TcpConnectionOpenState
+	} else if connection.Role == ServerConnectionRole {
+		// Dst is Client, Src is Server, Port is SrcPort
+		tcpConn.Client = dstWorkload
+		tcpConn.Server = srcWorkload
+		tcpConn.ServerPort = connection.Tuple.SrcPort
+		tcpConn.State = TcpConnectionAcceptState
+	} else {
+		return TcpConnection{}, errors.New("connection's role is unknown")
+	}
+
+	if throughput.IsActive == 0 {
+		tcpConn.State = TcpConnectionClosedState
+	}
+
+	return tcpConn, nil
 }
 
 func isAddressLoopback(ip uint32) bool {
