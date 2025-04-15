@@ -134,7 +134,7 @@ sort_desc(increase((sum by (client_name)(caretta_links_observed{server_namespace
 ```
 will output communication to external servers by client's name, sorted descending.
 
-## Need help:grey_question:
+## Need help :grey_question:
 Feel free to reach us on our <a href="http://www.groundcover.com/join-slack">slack channel</a>, or create an issue in this repository.
 
 ## Contribution
